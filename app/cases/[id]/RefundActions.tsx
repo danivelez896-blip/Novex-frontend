@@ -9,6 +9,7 @@ type Refund = {
   currency: string;
   status: string;
   provider?: string | null;
+  externalRefundId?: string | null;
 };
 
 export default function RefundActions({
@@ -26,43 +27,39 @@ export default function RefundActions({
 }) {
   const router = useRouter();
 
-  const [amount, setAmount] = useState(orderTotal);
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
+  const [loading, setLoading] =
+    useState(false);
+
+  const [message, setMessage] =
+    useState("");
 
   const refund = refunds[0];
 
-  async function createRefund() {
+  async function createShopifyRefund() {
     setLoading(true);
     setMessage("");
 
     try {
-      const response = await fetch("/api/refunds", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          caseId,
-          amount: Number(amount),
-          currency,
-          provider: "Demo",
-        }),
-      });
+      const response = await fetch(
+        `/api/refunds/shopify/${caseId}`,
+        {
+          method: "POST",
+        }
+      );
 
       const data = await response.json();
 
       if (!response.ok) {
         setMessage(
           data?.message ??
-            "No se pudo crear el reembolso."
+            "No se pudo realizar el reembolso."
         );
-        setLoading(false);
+
         return;
       }
 
       setMessage(
-        "Reembolso creado correctamente."
+        "Reembolso procesado correctamente mediante Shopify."
       );
 
       router.refresh();
@@ -77,7 +74,10 @@ export default function RefundActions({
     }
   }
 
-  if (caseStatus !== "INSPECTION" && !refund) {
+  if (
+    caseStatus !== "INSPECTION" &&
+    !refund
+  ) {
     return null;
   }
 
@@ -90,43 +90,38 @@ export default function RefundActions({
       {!refund ? (
         <>
           <p className="mt-2 text-sm text-zinc-500">
-            La inspección está abierta. Puedes
-            iniciar el reembolso del pedido.
+            La inspección está abierta.
+            Puedes devolver el importe
+            correspondiente al cliente
+            mediante Shopify.
           </p>
 
-          <div className="mt-5 max-w-xs">
-            <label className="text-sm text-zinc-400">
-              Importe a reembolsar
-            </label>
+          <div className="mt-5 rounded-xl border border-zinc-800 bg-zinc-950 p-4">
+            <p className="text-sm text-zinc-500">
+              Importe máximo del pedido
+            </p>
 
-            <div className="mt-2 flex items-center gap-3">
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                max={orderTotal}
-                value={amount}
-                onChange={(event) =>
-                  setAmount(event.target.value)
-                }
-                className="w-40 rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 outline-none focus:border-zinc-500"
-              />
+            <p className="mt-1 text-xl font-semibold">
+              {orderTotal} {currency}
+            </p>
 
-              <span className="text-sm text-zinc-400">
-                {currency}
-              </span>
-            </div>
+            <p className="mt-2 text-xs text-zinc-500">
+              Novex calculará automáticamente
+              el importe correspondiente a los
+              productos incluidos en esta
+              devolución.
+            </p>
           </div>
 
           <button
             type="button"
-            onClick={createRefund}
+            onClick={createShopifyRefund}
             disabled={loading}
             className="mt-5 rounded-xl bg-white px-5 py-3 text-sm font-medium text-black transition hover:bg-zinc-200 disabled:opacity-50"
           >
             {loading
-              ? "Creando..."
-              : "Iniciar reembolso"}
+              ? "Procesando reembolso..."
+              : "Reembolsar mediante Shopify"}
           </button>
         </>
       ) : (
@@ -137,7 +132,8 @@ export default function RefundActions({
             </p>
 
             <p className="mt-1 text-xl font-semibold">
-              {refund.amount} {refund.currency}
+              {refund.amount}{" "}
+              {refund.currency}
             </p>
 
             <p className="mt-3 text-sm text-zinc-500">
@@ -159,17 +155,38 @@ export default function RefundActions({
                 </p>
               </>
             )}
+
+            {refund.externalRefundId && (
+              <>
+                <p className="mt-3 text-sm text-zinc-500">
+                  ID del reembolso
+                </p>
+
+                <p className="mt-1 break-all font-mono text-xs">
+                  {refund.externalRefundId}
+                </p>
+              </>
+            )}
           </div>
 
-          <p className="mt-4 text-sm text-zinc-500">
-            El estado del reembolso se actualizará
-            automáticamente cuando esté conectado
-            el proveedor de pagos.
-          </p>
+          {refund.status ===
+            "PROCESSING" && (
+            <p className="mt-4 text-sm text-amber-400">
+              Shopify está procesando el
+              reembolso.
+            </p>
+          )}
 
-          {refund.status === "COMPLETED" && (
-            <span className="mt-3 inline-block rounded-xl bg-emerald-500/10 px-4 py-2 text-sm text-emerald-400">
+          {refund.status ===
+            "COMPLETED" && (
+            <span className="mt-4 inline-block rounded-xl bg-emerald-500/10 px-4 py-2 text-sm text-emerald-400">
               Reembolso completado
+            </span>
+          )}
+
+          {refund.status === "FAILED" && (
+            <span className="mt-4 inline-block rounded-xl bg-red-500/10 px-4 py-2 text-sm text-red-400">
+              El reembolso ha fallado
             </span>
           )}
         </div>
