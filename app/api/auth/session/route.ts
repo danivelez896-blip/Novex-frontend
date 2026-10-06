@@ -20,17 +20,34 @@ export async function GET() {
     );
   }
 
-  const response = await fetch(
-    `${NOVEX_API_URL.replace(/\/$/, "")}/api/auth/me`,
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-      cache: "no-store",
-    }
-  );
+  const baseUrl =
+    NOVEX_API_URL.replace(/\/$/, "");
 
-  if (!response.ok) {
+  const headers = {
+    Authorization: `Bearer ${accessToken}`,
+  };
+
+  const [
+    meResponse,
+    storesResponse,
+  ] = await Promise.all([
+    fetch(
+      `${baseUrl}/api/auth/me`,
+      {
+        headers,
+        cache: "no-store",
+      }
+    ),
+    fetch(
+      `${baseUrl}/api/stores`,
+      {
+        headers,
+        cache: "no-store",
+      }
+    ),
+  ]);
+
+  if (!meResponse.ok) {
     return Response.json(
       {
         authenticated: false,
@@ -39,10 +56,17 @@ export async function GET() {
     );
   }
 
-  const data = await response.json();
+  const data =
+    await meResponse.json();
+
+  const stores =
+    storesResponse.ok
+      ? await storesResponse.json()
+      : [];
 
   return Response.json({
     authenticated: true,
     ...data,
+    stores,
   });
 }
