@@ -41,6 +41,7 @@ type SessionData = {
   companies?: SessionCompany[];
   stores?: SessionStore[];
   activeStoreId?: number | null;
+  activeStoreChanged?: boolean;
 };
 
 const navigation = [
@@ -111,6 +112,12 @@ export default function AppShell({
 
         if (!cancelled) {
           setSession(data);
+
+          if (
+            data.activeStoreChanged
+          ) {
+            router.refresh();
+          }
         }
       } catch {
         // El contenido principal ya tiene su
