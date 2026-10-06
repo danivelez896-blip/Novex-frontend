@@ -80,11 +80,14 @@ export async function GET() {
     stores[0] ??
     null;
 
-  if (
-    activeStore &&
-    activeStore.id !==
-      requestedStoreId
-  ) {
+  const activeStoreChanged =
+    Boolean(
+      activeStore &&
+      activeStore.id !==
+        requestedStoreId
+    );
+
+  if (activeStoreChanged) {
     cookieStore.set(
       ACTIVE_STORE_COOKIE,
       String(activeStore.id),
@@ -107,5 +110,6 @@ export async function GET() {
     stores,
     activeStoreId:
       activeStore?.id ?? null,
+    activeStoreChanged,
   });
 }
