@@ -1,6 +1,12 @@
 import { novexFetch } from "@/lib/novex-server";
 import Link from "next/link";
 
+type Store = {
+  id: number;
+  name: string;
+  platform: string;
+};
+
 type Case = {
   id: number;
   status: string;
@@ -52,8 +58,29 @@ function getStatusClasses(status: string) {
   }
 }
 
+async function getStores(): Promise<Store[]> {
+  const response = await novexFetch(
+    "/stores"
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      "No se pudieron cargar las tiendas"
+    );
+  }
+
+  return response.json();
+}
+
 export default async function Home() {
-  const cases = await getCases();
+  const [cases, stores] =
+    await Promise.all([
+      getCases(),
+      getStores(),
+    ]);
+
+  const store =
+    stores[0] ?? null;
 
   const total = cases.length;
   const pending = cases.filter(
@@ -88,7 +115,7 @@ export default async function Home() {
           </div>
 
           <div className="rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-2 text-sm text-zinc-300">
-            Novex Demo Store
+            {store?.name ?? "Sin tienda"}
           </div>
         </header>
 
