@@ -129,11 +129,13 @@ export default function ReturnRequestForm({
       return;
     }
 
+    const token =
+      initialDraftToken;
     let cancelled = false;
 
     async function restoreDraft() {
       const response = await fetch(
-        `/api/public/returns/drafts/${encodeURIComponent(initialDraftToken)}`,
+        `/api/public/returns/drafts/${encodeURIComponent(token)}`,
         {
           cache: "no-store",
         }
@@ -183,10 +185,13 @@ export default function ReturnRequestForm({
       return;
     }
 
+    const token =
+      draftToken;
+
     const timeout =
       window.setTimeout(() => {
         void fetch(
-          `/api/public/returns/drafts/${encodeURIComponent(draftToken)}`,
+          `/api/public/returns/drafts/${encodeURIComponent(token)}`,
           {
             method: "PATCH",
             headers: {
@@ -211,11 +216,13 @@ export default function ReturnRequestForm({
       return;
     }
 
+    const token =
+      draftToken;
     let cancelled = false;
 
     async function refreshDraft() {
       const response = await fetch(
-        `/api/public/returns/drafts/${encodeURIComponent(draftToken)}`,
+        `/api/public/returns/drafts/${encodeURIComponent(token)}`,
         {
           cache: "no-store",
         }
