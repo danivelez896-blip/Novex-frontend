@@ -1,3 +1,4 @@
+import { novexFetch } from "@/lib/novex-server";
 import Link from "next/link";
 
 type Case = {
@@ -19,11 +20,8 @@ type Case = {
 };
 
 async function getCases(): Promise<Case[]> {
-  const response = await fetch(
-    "https://novex-production-f614.up.railway.app/api/cases",
-    {
-      cache: "no-store",
-    }
+  const response = await novexFetch(
+    "/cases"
   );
 
   if (!response.ok) {

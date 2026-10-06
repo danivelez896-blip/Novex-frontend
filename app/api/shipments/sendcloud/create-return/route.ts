@@ -1,18 +1,23 @@
-export async function POST(request: Request) {
+import { novexRouteFetch } from "@/lib/novex-route";
+
+export async function POST(
+  request: Request
+) {
   try {
     const body = await request.json();
 
-    const response = await fetch(
-      "http://localhost:3002/api/shipments/sendcloud/create-return",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-        cache: "no-store",
-      }
-    );
+    const response =
+      await novexRouteFetch(
+        "/shipments/sendcloud/create-return",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify(body),
+        }
+      );
 
     const data = await response.json();
 

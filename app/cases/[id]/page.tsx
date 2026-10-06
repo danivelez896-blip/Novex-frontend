@@ -1,3 +1,4 @@
+import { novexFetch } from "@/lib/novex-server";
 import ShipmentActions from "./ShipmentActions";
 import RefundActions from "./RefundActions";
 import CaseActions from "./CaseActions";
@@ -69,11 +70,8 @@ type CaseDetail = {
 };
 
 async function getCase(id: string): Promise<CaseDetail> {
-  const response = await fetch(
-    `http://localhost:3002/api/cases/${id}`,
-    {
-      cache: "no-store",
-    }
+  const response = await novexFetch(
+    `/cases/${id}`
   );
 
   if (!response.ok) {
