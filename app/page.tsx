@@ -1,4 +1,7 @@
-import { novexFetch } from "@/lib/novex-server";
+import {
+  getActiveStoreId,
+  novexFetch,
+} from "@/lib/novex-server";
 import Link from "next/link";
 
 type Store = {
@@ -9,6 +12,7 @@ type Store = {
 
 type Case = {
   id: number;
+  storeId: number;
   status: string;
   requestedAt: string;
   customer?: {
@@ -73,27 +77,41 @@ async function getStores(): Promise<Store[]> {
 }
 
 export default async function Home() {
-  const [cases, stores] =
+  const [cases, stores, activeStoreId] =
     await Promise.all([
       getCases(),
       getStores(),
+      getActiveStoreId(),
     ]);
 
   const store =
-    stores[0] ?? null;
+    stores.find(
+      (item) =>
+        item.id === activeStoreId
+    ) ??
+    stores[0] ??
+    null;
 
-  const total = cases.length;
-  const pending = cases.filter(
+  const visibleCases =
+    store
+      ? cases.filter(
+          (item) =>
+            item.storeId === store.id
+        )
+      : cases;
+
+  const total = visibleCases.length;
+  const pending = visibleCases.filter(
     (item) => item.status === "PENDING_REVIEW"
   ).length;
-  const approved = cases.filter(
+  const approved = visibleCases.filter(
     (item) => item.status === "APPROVED"
   ).length;
-  const refunded = cases.filter(
+  const refunded = visibleCases.filter(
     (item) => item.status === "REFUNDED"
   ).length;
 
-  const recentCases = [...cases]
+  const recentCases = [...visibleCases]
     .sort(
       (a, b) =>
         new Date(b.requestedAt).getTime() -
