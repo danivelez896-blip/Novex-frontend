@@ -28,10 +28,11 @@ export async function POST(request: Request) {
 
     const formData = await request.formData();
 
-    const caseId = formData.get("caseId");
+    const casePublicId =
+      formData.get("casePublicId");
     const files = formData.getAll("files");
 
-    if (!caseId) {
+    if (!casePublicId) {
       return Response.json(
         {
           message: "Falta el identificador del caso.",
@@ -55,7 +56,9 @@ export async function POST(request: Request) {
 
     // Buscamos el cliente relacionado con el caso
     const caseResponse = await fetch(
-      `${supabaseUrl}/rest/v1/cases?id=eq.${caseId}&select=customer_id`,
+      `${supabaseUrl}/rest/v1/cases?public_id=eq.${encodeURIComponent(
+        String(casePublicId)
+      )}&select=id,customer_id`,
       {
         headers: {
           apikey: supabaseSecretKey,
@@ -77,8 +80,23 @@ export async function POST(request: Request) {
 
     const caseData = await caseResponse.json();
 
+    const caseId =
+      caseData?.[0]?.id ?? null;
+
     const customerId =
       caseData?.[0]?.customer_id ?? null;
+
+    if (!caseId) {
+      return Response.json(
+        {
+          message:
+            "No se encontró la devolución.",
+        },
+        {
+          status: 404,
+        }
+      );
+    }
 
     const uploadedFiles: {
       path: string;
