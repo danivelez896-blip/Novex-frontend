@@ -1,32 +1,33 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { use, useEffect, useState } from "react";
+import {
+  use,
+  useEffect,
+  useState,
+} from "react";
 
-type OrderDetail = {
-  id: number;
-  storeId: number;
-  customerId: number | null;
-  orderNumber: string;
-
-  items: {
-    id: number;
-    productName: string;
-    variantName: string | null;
-    sku: string | null;
-    quantity: number;
-    unitPrice: string;
-    currency: string;
-    isReturnable?: boolean;
-  }[];
-};
-
-type ReturnRule = {
-  id: number;
-  storeId: number | null;
-  requirePhotos: boolean;
-  allowReturns: boolean;
-  isActive: boolean;
+type PortalResponse = {
+  order: {
+    publicId: string;
+    orderNumber: string;
+    items: {
+      id: number;
+      productName: string;
+      variantName: string | null;
+      sku: string | null;
+      quantity: number;
+      unitPrice: string;
+      currency: string;
+      isReturnable: boolean;
+    }[];
+  };
+  rule: {
+    requirePhotos: boolean;
+    allowReturns: boolean;
+    isActive: boolean;
+    withinReturnPeriod: boolean;
+  } | null;
 };
 
 export default function ReturnItemPage({
@@ -37,100 +38,86 @@ export default function ReturnItemPage({
     itemId: string;
   }>;
 }) {
-  const { id, itemId } = use(params);
-
+  const { id, itemId } =
+    use(params);
   const router = useRouter();
 
-  const [order, setOrder] =
-    useState<OrderDetail | null>(null);
-
-  const [rule, setRule] =
-    useState<ReturnRule | null>(null);
-
-  const [loadingOrder, setLoadingOrder] =
+  const [portal, setPortal] =
+    useState<PortalResponse | null>(
+      null
+    );
+  const [loading, setLoading] =
     useState(true);
-
   const [submitting, setSubmitting] =
     useState(false);
-
-  const [reason, setReason] = useState("");
-  const [comment, setComment] = useState("");
-
-  const [photos, setPhotos] = useState<File[]>([]);
-
-  const [message, setMessage] = useState("");
+  const [reason, setReason] =
+    useState("");
+  const [comment, setComment] =
+    useState("");
+  const [photos, setPhotos] =
+    useState<File[]>([]);
+  const [message, setMessage] =
+    useState("");
 
   useEffect(() => {
     async function loadData() {
       try {
-        const [orderResponse, rulesResponse] =
-          await Promise.all([
-            fetch(`/api/orders/${id}`),
-            fetch("/api/return-rules"),
-          ]);
+        const response =
+          await fetch(
+            `/api/public/returns/orders/${encodeURIComponent(id)}`,
+            {
+              cache: "no-store",
+            }
+          );
 
-        if (!orderResponse.ok) {
+        if (!response.ok) {
           setMessage(
             "No se pudo cargar el pedido."
           );
-
-          setLoadingOrder(false);
           return;
         }
 
-        const orderData: OrderDetail =
-          await orderResponse.json();
-
-        const rulesData: ReturnRule[] =
-          rulesResponse.ok
-            ? await rulesResponse.json()
-            : [];
-
-        const activeRule =
-          rulesData.find(
-            (item) =>
-              item.storeId ===
-                orderData.storeId &&
-              item.isActive
-          ) ?? null;
-
-        setOrder(orderData);
-        setRule(activeRule);
-        setLoadingOrder(false);
+        setPortal(
+          await response.json()
+        );
       } catch {
         setMessage(
           "No se pudieron cargar los datos."
         );
-
-        setLoadingOrder(false);
+      } finally {
+        setLoading(false);
       }
     }
 
-    loadData();
+    void loadData();
   }, [id]);
 
   function handlePhotos(
     event: React.ChangeEvent<HTMLInputElement>
   ) {
-    const selectedFiles = Array.from(
-      event.target.files ?? []
-    );
+    const selectedFiles =
+      Array.from(
+        event.target.files ?? []
+      );
 
-    if (selectedFiles.length > 5) {
+    if (
+      selectedFiles.length > 5
+    ) {
       setMessage(
         "Puedes subir un máximo de 5 fotos."
       );
       return;
     }
 
-    const invalidFile = selectedFiles.find(
-      (file) =>
-        ![
-          "image/jpeg",
-          "image/png",
-          "image/webp",
-        ].includes(file.type)
-    );
+    const invalidFile =
+      selectedFiles.find(
+        (file) =>
+          ![
+            "image/jpeg",
+            "image/png",
+            "image/webp",
+          ].includes(file.type)
+      );
 
     if (invalidFile) {
       setMessage(
@@ -139,10 +126,12 @@ export default function ReturnItemPage({
       return;
     }
 
-    const oversizedFile = selectedFiles.find(
-      (file) =>
-        file.size > 5 * 1024 * 1024
-    );
+    const oversizedFile =
+      selectedFiles.find(
+        (file) =>
+          file.size >
+          5 * 1024 * 1024
+      );
 
     if (oversizedFile) {
       setMessage(
@@ -155,20 +144,26 @@ export default function ReturnItemPage({
     setPhotos(selectedFiles);
   }
 
-  async function uploadPhotos(caseId: number) {
+  async function uploadPhotos(
+    casePublicId: string
+  ) {
     if (photos.length === 0) {
       return true;
     }
 
-    const formData = new FormData();
+    const formData =
+      new FormData();
 
     formData.append(
-      "caseId",
-      String(caseId)
+      "casePublicId",
+      casePublicId
     );
 
     photos.forEach((photo) => {
-      formData.append("files", photo);
+      formData.append(
+        "files",
+        photo
+      );
     });
 
     const response = await fetch(
@@ -183,7 +178,7 @@ export default function ReturnItemPage({
   }
 
   async function submitReturn() {
-    if (!order) {
+    if (!portal) {
       return;
     }
 
@@ -195,7 +190,7 @@ export default function ReturnItemPage({
     }
 
     if (
-      rule?.requirePhotos &&
+      portal.rule?.requirePhotos &&
       photos.length === 0
     ) {
       setMessage(
@@ -207,68 +202,67 @@ export default function ReturnItemPage({
     setSubmitting(true);
     setMessage("");
 
-    const response = await fetch(
-      "/api/cases",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type":
-            "application/json",
-        },
-        body: JSON.stringify({
-          storeId: order.storeId,
-          orderId: order.id,
-          customerId:
-            order.customerId,
-          type: "RETURN",
-
-          items: [
-            {
-              orderItemId:
-                Number(itemId),
-
-              quantity: 1,
-
-              reason,
-
-              customerComment:
-                comment || null,
+    try {
+      const response =
+        await fetch(
+          `/api/public/returns/orders/${encodeURIComponent(id)}/cases`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
             },
-          ],
-        }),
-      }
-    );
+            body: JSON.stringify({
+              items: [
+                {
+                  orderItemId:
+                    Number(itemId),
+                  quantity: 1,
+                  reason,
+                  customerComment:
+                    comment || undefined,
+                },
+              ],
+            }),
+          }
+        );
 
-    if (!response.ok) {
+      const data =
+        await response.json();
+
+      if (!response.ok) {
+        setMessage(
+          data.message ??
+            "No se pudo crear la devolución."
+        );
+        return;
+      }
+
+      const photosUploaded =
+        await uploadPhotos(
+          data.publicId
+        );
+
+      if (!photosUploaded) {
+        setMessage(
+          "La devolución se ha creado, pero ha ocurrido un error al guardar las fotos."
+        );
+        return;
+      }
+
+      router.push(
+        `/return/${id}/success/${data.publicId}`
+      );
+    } catch {
       setMessage(
         "No se pudo crear la devolución."
       );
-
+    } finally {
       setSubmitting(false);
-      return;
     }
-
-    const newCase =
-      await response.json();
-
-    const photosUploaded =
-      await uploadPhotos(newCase.id);
-
-    if (!photosUploaded) {
-      setMessage(
-        "La devolución se ha creado, pero ha ocurrido un error al guardar las fotos."
-      );
-
-      setSubmitting(false);
-      return;
-    }
-
-    router.push(
-      `/return/${order.id}/success/${newCase.id}`
-    );
   }
 
-  if (loadingOrder) {
+  if (loading) {
     return (
       <main className="min-h-screen bg-zinc-100 px-6 py-10 text-zinc-900">
         <div className="mx-auto max-w-2xl">
@@ -280,23 +274,33 @@ export default function ReturnItemPage({
     );
   }
 
-  if (!order) {
+  if (!portal) {
     return (
       <main className="min-h-screen bg-zinc-100 px-6 py-10 text-zinc-900">
         <div className="mx-auto max-w-2xl">
           <p>
-            No se pudo cargar el pedido.
+            {message ||
+              "No se pudo cargar el pedido."}
           </p>
         </div>
       </main>
     );
   }
 
-  const item = order.items.find(
-    (orderItem) =>
-      orderItem.id ===
-      Number(itemId)
-  );
+  const item =
+    portal.order.items.find(
+      (orderItem) =>
+        orderItem.id ===
+        Number(itemId)
+    );
+
+  const canReturn =
+    Boolean(
+      item?.isReturnable &&
+      portal.rule?.isActive &&
+      portal.rule.allowReturns &&
+      portal.rule.withinReturnPeriod
+    );
 
   if (!item) {
     return (
@@ -305,6 +309,33 @@ export default function ReturnItemPage({
           <p>
             Producto no encontrado.
           </p>
+        </div>
+      </main>
+    );
+  }
+
+  if (!canReturn) {
+    return (
+      <main className="min-h-screen bg-zinc-100 px-6 py-10 text-zinc-900">
+        <div className="mx-auto max-w-2xl">
+          <button
+            type="button"
+            onClick={() =>
+              router.back()
+            }
+            className="text-sm text-zinc-500 transition hover:text-black"
+          >
+            ← Volver
+          </button>
+
+          <section className="mt-8 rounded-2xl border border-red-200 bg-white p-6 shadow-sm">
+            <h1 className="text-xl font-semibold">
+              Este producto no puede devolverse
+            </h1>
+            <p className="mt-2 text-sm text-zinc-600">
+              La solicitud no cumple actualmente las condiciones de devolución de la tienda.
+            </p>
+          </section>
         </div>
       </main>
     );
@@ -328,7 +359,7 @@ export default function ReturnItemPage({
         <div className="mb-8">
           <p className="text-sm text-zinc-500">
             Pedido{" "}
-            {order.orderNumber}
+            {portal.order.orderNumber}
           </p>
 
           <h1 className="mt-2 text-3xl font-semibold">
@@ -336,8 +367,7 @@ export default function ReturnItemPage({
           </h1>
 
           <p className="mt-2 text-sm text-zinc-600">
-            Cuéntanos por qué quieres
-            devolver este producto.
+            Cuéntanos por qué quieres devolver este producto.
           </p>
         </div>
 
@@ -346,15 +376,12 @@ export default function ReturnItemPage({
             <p className="font-medium">
               {item.productName}
             </p>
-
             <p className="mt-1 text-sm text-zinc-500">
               {item.variantName ??
                 "Sin variante"}
             </p>
-
             <p className="mt-1 text-xs text-zinc-400">
-              SKU:{" "}
-              {item.sku ?? "-"}
+              SKU: {item.sku ?? "-"}
             </p>
           </div>
 
@@ -375,27 +402,21 @@ export default function ReturnItemPage({
               <option value="">
                 Selecciona un motivo
               </option>
-
               <option value="Talla incorrecta">
                 Talla incorrecta
               </option>
-
               <option value="Producto defectuoso">
                 Producto defectuoso
               </option>
-
               <option value="No era lo esperado">
                 No era lo esperado
               </option>
-
               <option value="Producto incorrecto">
                 Producto incorrecto
               </option>
-
               <option value="Ya no lo necesito">
                 Ya no lo necesito
               </option>
-
               <option value="Otro">
                 Otro
               </option>
@@ -426,7 +447,8 @@ export default function ReturnItemPage({
                 Fotos
               </label>
 
-              {rule?.requirePhotos && (
+              {portal.rule
+                ?.requirePhotos && (
                 <span className="rounded-full bg-red-50 px-2 py-1 text-xs text-red-600">
                   Obligatorio
                 </span>
@@ -434,20 +456,21 @@ export default function ReturnItemPage({
             </div>
 
             <p className="mt-1 text-xs text-zinc-500">
-              Máximo 5 fotos.
-              JPG, PNG o WEBP.
-              Máximo 5 MB por imagen.
+              Máximo 5 fotos. JPG, PNG o WEBP. Máximo 5 MB por imagen.
             </p>
 
             <input
               type="file"
               accept="image/jpeg,image/png,image/webp"
               multiple
-              onChange={handlePhotos}
+              onChange={
+                handlePhotos
+              }
               className="mt-3 block w-full rounded-xl border border-zinc-300 bg-white p-3 text-sm"
             />
 
-            {photos.length > 0 && (
+            {photos.length >
+              0 && (
               <div className="mt-4 space-y-2">
                 {photos.map(
                   (photo) => (
@@ -471,7 +494,9 @@ export default function ReturnItemPage({
 
           <button
             type="button"
-            onClick={submitReturn}
+            onClick={() =>
+              void submitReturn()
+            }
             disabled={submitting}
             className="mt-6 w-full rounded-xl bg-black px-5 py-3 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50"
           >
@@ -482,8 +507,7 @@ export default function ReturnItemPage({
         </section>
 
         <p className="mt-6 text-center text-xs text-zinc-400">
-          Gestión de devoluciones
-          mediante Novex
+          Gestión de devoluciones mediante Novex
         </p>
       </div>
     </main>
