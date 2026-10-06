@@ -1,8 +1,12 @@
-import { novexFetch } from "@/lib/novex-server";
+import {
+  getActiveStoreId,
+  novexFetch,
+} from "@/lib/novex-server";
 import Link from "next/link";
 
 type Customer = {
   id: number;
+  storeId: number;
   firstName: string | null;
   lastName: string | null;
   email: string | null;
@@ -23,7 +27,20 @@ async function getCustomers(): Promise<Customer[]> {
 }
 
 export default async function CustomersPage() {
-  const customers = await getCustomers();
+  const [customers, activeStoreId] =
+    await Promise.all([
+      getCustomers(),
+      getActiveStoreId(),
+    ]);
+
+  const visibleCustomers =
+    activeStoreId
+      ? customers.filter(
+          (customer) =>
+            customer.storeId ===
+            activeStoreId
+        )
+      : customers;
 
   return (
     <div className="px-8 py-8">
@@ -63,7 +80,7 @@ export default async function CustomersPage() {
             </thead>
 
             <tbody>
-              {customers.map((customer) => {
+              {visibleCustomers.map((customer) => {
                 const customerName =
                   `${customer.firstName ?? ""} ${
                     customer.lastName ?? ""

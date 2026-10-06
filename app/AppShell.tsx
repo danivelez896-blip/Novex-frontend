@@ -40,6 +40,8 @@ type SessionData = {
   };
   companies?: SessionCompany[];
   stores?: SessionStore[];
+  activeStoreId?: number | null;
+  activeStoreChanged?: boolean;
 };
 
 const navigation = [
@@ -110,6 +112,12 @@ export default function AppShell({
 
         if (!cancelled) {
           setSession(data);
+
+          if (
+            data.activeStoreChanged
+          ) {
+            router.refresh();
+          }
         }
       } catch {
         // El contenido principal ya tiene su
@@ -128,6 +136,40 @@ export default function AppShell({
     return <>{children}</>;
   }
 
+  async function changeStore(
+    storeId: number
+  ) {
+    const response = await fetch(
+      "/api/context/store",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type":
+            "application/json",
+        },
+        body: JSON.stringify({
+          storeId,
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      return;
+    }
+
+    setSession((current) =>
+      current
+        ? {
+            ...current,
+            activeStoreId:
+              storeId,
+          }
+        : current
+    );
+
+    router.refresh();
+  }
+
   async function logout() {
     await fetch("/api/auth/logout", {
       method: "POST",
@@ -137,8 +179,21 @@ export default function AppShell({
     router.refresh();
   }
 
+  const activeStore =
+    session?.stores?.find(
+      (item) =>
+        item.id ===
+        session.activeStoreId
+    ) ?? null;
+
   const company =
-    session?.companies?.[0] ?? null;
+    session?.companies?.find(
+      (item) =>
+        item.companyId ===
+        activeStore?.companyId
+    ) ??
+    session?.companies?.[0] ??
+    null;
 
   const companyStores =
     session?.stores?.filter(
@@ -149,6 +204,11 @@ export default function AppShell({
     ) ?? [];
 
   const store =
+    session?.stores?.find(
+      (item) =>
+        item.id ===
+        session.activeStoreId
+    ) ??
     companyStores[0] ??
     session?.stores?.[0] ??
     null;
@@ -211,10 +271,74 @@ export default function AppShell({
                   "Empresa"}
               </p>
 
-              <p className="mt-2 truncate text-sm font-medium">
-                {store?.name ??
-                  "Sin tienda"}
-              </p>
+              {session?.stores &&
+              session.stores.length > 1 ? (
+                <select
+                  value={
+                    store?.id ?? ""
+                  }
+                  onChange={(event) =>
+                    void changeStore(
+                      Number(
+                        event.target.value
+                      )
+                    )
+                  }
+                  className="mt-2 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-2 py-2 text-sm text-white outline-none"
+                >
+                  {session.companies?.map(
+                    (item) => {
+                      const stores =
+                        session.stores?.filter(
+                          (candidate) =>
+                            candidate.companyId ===
+                            item.companyId
+                        ) ?? [];
+
+                      if (
+                        stores.length === 0
+                      ) {
+                        return null;
+                      }
+
+                      return (
+                        <optgroup
+                          key={
+                            item.companyId
+                          }
+                          label={
+                            item.companyName
+                          }
+                        >
+                          {stores.map(
+                            (
+                              candidate
+                            ) => (
+                              <option
+                                key={
+                                  candidate.id
+                                }
+                                value={
+                                  candidate.id
+                                }
+                              >
+                                {
+                                  candidate.name
+                                }
+                              </option>
+                            )
+                          )}
+                        </optgroup>
+                      );
+                    }
+                  )}
+                </select>
+              ) : (
+                <p className="mt-2 truncate text-sm font-medium">
+                  {store?.name ??
+                    "Sin tienda"}
+                </p>
+              )}
 
               <div className="mt-2 flex items-center justify-between gap-2 text-xs text-zinc-500">
                 <span>

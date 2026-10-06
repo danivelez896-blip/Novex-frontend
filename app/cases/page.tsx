@@ -1,8 +1,12 @@
-import { novexFetch } from "@/lib/novex-server";
+import {
+  getActiveStoreId,
+  novexFetch,
+} from "@/lib/novex-server";
 import Link from "next/link";
 
 type Case = {
   id: number;
+  storeId: number;
   status: string;
   requestedAt: string;
   customer?: {
@@ -51,7 +55,20 @@ function getStatusClasses(status: string) {
 }
 
 export default async function CasesPage() {
-  const cases = await getCases();
+  const [cases, activeStoreId] =
+    await Promise.all([
+      getCases(),
+      getActiveStoreId(),
+    ]);
+
+  const visibleCases =
+    activeStoreId
+      ? cases.filter(
+          (item) =>
+            item.storeId ===
+            activeStoreId
+        )
+      : cases;
 
   return (
     <div className="px-8 py-8">
@@ -78,7 +95,7 @@ export default async function CasesPage() {
             </thead>
 
             <tbody>
-              {cases.map((item) => {
+              {visibleCases.map((item) => {
                 const customerName = item.customer
                   ? `${item.customer.firstName ?? ""} ${
                       item.customer.lastName ?? ""

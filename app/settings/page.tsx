@@ -1,4 +1,7 @@
-import { novexFetch } from "@/lib/novex-server";
+import {
+  getActiveStoreId,
+  novexFetch,
+} from "@/lib/novex-server";
 type Company = {
   id: number;
   name: string;
@@ -13,9 +16,14 @@ type Store = {
 };
 
 async function getSettingsData() {
-  const [storesResponse, companiesResponse] = await Promise.all([
+  const [
+    storesResponse,
+    companiesResponse,
+    activeStoreId,
+  ] = await Promise.all([
     novexFetch("/stores"),
     novexFetch("/companies"),
+    getActiveStoreId(),
   ]);
 
   if (!storesResponse.ok || !companiesResponse.ok) {
@@ -25,9 +33,25 @@ async function getSettingsData() {
   const stores: Store[] = await storesResponse.json();
   const companies: Company[] = await companiesResponse.json();
 
+  const store =
+    stores.find(
+      (item) =>
+        item.id === activeStoreId
+    ) ??
+    stores[0] ??
+    null;
+
+  const company =
+    companies.find(
+      (item) =>
+        item.id === store?.companyId
+    ) ??
+    companies[0] ??
+    null;
+
   return {
-    store: stores[0] ?? null,
-    company: companies[0] ?? null,
+    store,
+    company,
   };
 }
 

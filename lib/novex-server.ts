@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { ACCESS_TOKEN_COOKIE } from "@/lib/auth-cookies";
+import { ACTIVE_STORE_COOKIE } from "@/lib/store-context";
 
 export const NOVEX_API_URL =
   process.env.NOVEX_API_URL ??
@@ -19,6 +20,21 @@ export async function getNovexAccessToken() {
   }
 
   return token;
+}
+
+export async function getActiveStoreId() {
+  const cookieStore = await cookies();
+  const value =
+    cookieStore.get(
+      ACTIVE_STORE_COOKIE
+    )?.value;
+
+  const storeId = Number(value);
+
+  return Number.isInteger(storeId) &&
+    storeId > 0
+    ? storeId
+    : null;
 }
 
 export async function novexFetch(
