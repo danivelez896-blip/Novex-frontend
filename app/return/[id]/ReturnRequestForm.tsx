@@ -1,6 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import {
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useRouter } from "next/navigation";
 
 type OrderItem = {
@@ -71,6 +75,11 @@ export default function ReturnRequestForm({
   const [message, setMessage] =
     useState("");
 
+  const galleryInputRef =
+    useRef<HTMLInputElement>(null);
+  const cameraInputRef =
+    useRef<HTMLInputElement>(null);
+
   const selectedItems = useMemo(
     () =>
       items.filter(
@@ -101,10 +110,9 @@ export default function ReturnRequestForm({
         event.target.files ?? []
       );
 
-    if (selectedFiles.length > 5) {
-      setMessage(
-        "Puedes subir un máximo de 5 fotos."
-      );
+    event.target.value = "";
+
+    if (selectedFiles.length === 0) {
       return;
     }
 
@@ -139,8 +147,47 @@ export default function ReturnRequestForm({
       return;
     }
 
+    setPhotos((current) => {
+      const combined = [
+        ...current,
+        ...selectedFiles,
+      ];
+
+      const unique = combined.filter(
+        (file, index, all) =>
+          all.findIndex(
+            (candidate) =>
+              candidate.name ===
+                file.name &&
+              candidate.size ===
+                file.size &&
+              candidate.lastModified ===
+                file.lastModified
+          ) === index
+      );
+
+      if (unique.length > 5) {
+        setMessage(
+          "Puedes adjuntar un máximo de 5 fotos en total."
+        );
+        return current;
+      }
+
+      setMessage("");
+      return unique;
+    });
+  }
+
+  function removePhoto(
+    index: number
+  ) {
+    setPhotos((current) =>
+      current.filter(
+        (_, photoIndex) =>
+          photoIndex !== index
+      )
+    );
     setMessage("");
-    setPhotos(selectedFiles);
   }
 
   async function uploadPhotos(
@@ -536,30 +583,87 @@ export default function ReturnRequestForm({
           </div>
 
           <p className="mt-2 text-sm text-zinc-500">
-            Máximo 5 fotos. JPG, PNG o WEBP. Máximo 5 MB por imagen.
+            Puedes añadirlas poco a poco. Máximo 5 fotos en total, JPG, PNG o WEBP y 5 MB por imagen.
           </p>
 
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={() =>
+                cameraInputRef.current?.click()
+              }
+              className="rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm font-medium transition hover:bg-zinc-50"
+            >
+              Hacer foto
+            </button>
+
+            <button
+              type="button"
+              onClick={() =>
+                galleryInputRef.current?.click()
+              }
+              className="rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm font-medium transition hover:bg-zinc-50"
+            >
+              Elegir de la galería
+            </button>
+          </div>
+
           <input
+            ref={cameraInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            capture="environment"
+            onChange={handlePhotos}
+            className="hidden"
+          />
+
+          <input
+            ref={galleryInputRef}
             type="file"
             accept="image/jpeg,image/png,image/webp"
             multiple
-            onChange={
-              handlePhotos
-            }
-            className="mt-4 block w-full rounded-xl border border-zinc-300 bg-white p-3 text-sm"
+            onChange={handlePhotos}
+            className="hidden"
           />
 
           {photos.length > 0 && (
             <div className="mt-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium">
+                  Fotos adjuntas
+                </p>
+                <span className="text-xs text-zinc-500">
+                  {photos.length}/5
+                </span>
+              </div>
+
               {photos.map(
-                (photo) => (
+                (photo, index) => (
                   <div
-                    key={`${photo.name}-${photo.size}`}
-                    className="rounded-lg bg-zinc-100 px-3 py-2 text-xs text-zinc-600"
+                    key={`${photo.name}-${photo.size}-${photo.lastModified}`}
+                    className="flex items-center justify-between gap-3 rounded-lg bg-zinc-100 px-3 py-2"
                   >
-                    {photo.name}
+                    <p className="min-w-0 truncate text-xs text-zinc-600">
+                      {photo.name}
+                    </p>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        removePhoto(index)
+                      }
+                      className="shrink-0 text-xs font-medium text-red-600 hover:text-red-700"
+                    >
+                      Quitar
+                    </button>
                   </div>
                 )
+              )}
+
+              {photos.length < 5 && (
+                <p className="text-xs text-zinc-500">
+                  Puedes seguir añadiendo fotos una a una o varias de golpe.
+                </p>
               )}
             </div>
           )}
