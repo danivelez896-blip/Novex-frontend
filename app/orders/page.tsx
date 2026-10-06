@@ -2,7 +2,7 @@ import {
   getActiveStoreId,
   novexFetch,
 } from "@/lib/novex-server";
-import Link from "next/link";
+import OrdersTable from "./OrdersTable";
 
 type Order = {
   id: number;
@@ -10,14 +10,12 @@ type Order = {
   totalAmount: string;
   currency: string;
   orderedAt: string;
-
   customer?: {
     id: number;
     firstName: string | null;
     lastName: string | null;
     email: string | null;
   } | null;
-
   store?: {
     id: number;
     name: string;
@@ -30,7 +28,9 @@ async function getOrders(): Promise<Order[]> {
   );
 
   if (!response.ok) {
-    throw new Error("No se pudieron cargar los pedidos");
+    throw new Error(
+      "No se pudieron cargar los pedidos"
+    );
   }
 
   return response.json();
@@ -52,119 +52,86 @@ export default async function OrdersPage() {
         )
       : orders;
 
+  const totalValue =
+    visibleOrders.reduce(
+      (sum, order) =>
+        sum +
+        (Number(
+          order.totalAmount
+        ) || 0),
+      0
+    );
+
+  const now = Date.now();
+  const last30Days =
+    visibleOrders.filter(
+      (order) =>
+        now -
+          new Date(
+            order.orderedAt
+          ).getTime() <=
+        30 * 24 * 60 * 60 * 1000
+    ).length;
+
+  const currency =
+    visibleOrders[0]?.currency ??
+    "EUR";
+
   return (
     <div className="px-8 py-8">
       <div className="mb-8">
-        <p className="text-sm text-zinc-400">Gestión</p>
+        <p className="text-sm text-zinc-400">
+          Gestión
+        </p>
 
         <h1 className="mt-1 text-3xl font-semibold">
           Pedidos
         </h1>
 
         <p className="mt-2 text-sm text-zinc-500">
-          Pedidos sincronizados con Novex
+          Pedidos sincronizados de la tienda activa.
         </p>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="text-zinc-400">
-              <tr className="border-b border-zinc-800">
-                <th className="px-6 py-4 font-medium">
-                  Pedido
-                </th>
+      <div className="mb-6 grid gap-4 md:grid-cols-3">
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
+          <p className="text-sm text-zinc-500">
+            Pedidos totales
+          </p>
+          <p className="mt-2 text-2xl font-semibold">
+            {visibleOrders.length}
+          </p>
+        </div>
 
-                <th className="px-6 py-4 font-medium">
-                  Cliente
-                </th>
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
+          <p className="text-sm text-zinc-500">
+            Últimos 30 días
+          </p>
+          <p className="mt-2 text-2xl font-semibold">
+            {last30Days}
+          </p>
+        </div>
 
-                <th className="px-6 py-4 font-medium">
-                  Tienda
-                </th>
-
-                <th className="px-6 py-4 font-medium">
-                  Importe
-                </th>
-
-                <th className="px-6 py-4 font-medium">
-                  Fecha
-                </th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {visibleOrders.map((order) => {
-                const customerName = order.customer
-                  ? `${order.customer.firstName ?? ""} ${
-                      order.customer.lastName ?? ""
-                    }`.trim()
-                  : "Sin cliente";
-
-                return (
-                  <tr
-                    key={order.id}
-                    className="border-b border-zinc-800 transition hover:bg-zinc-800/50 last:border-b-0"
-                  >
-                    <td className="px-6 py-4">
-                      <Link
-                        href={`/orders/${order.id}`}
-                        className="block font-medium text-white"
-                      >
-                        {order.orderNumber}
-                      </Link>
-                    </td>
-
-                    <td className="px-6 py-4">
-                      <Link
-                        href={`/orders/${order.id}`}
-                        className="block"
-                      >
-                        <p>
-                          {customerName || "Sin nombre"}
-                        </p>
-
-                        <p className="text-xs text-zinc-500">
-                          {order.customer?.email ?? ""}
-                        </p>
-                      </Link>
-                    </td>
-
-                    <td className="px-6 py-4">
-                      <Link
-                        href={`/orders/${order.id}`}
-                        className="block text-zinc-300"
-                      >
-                        {order.store?.name ?? "-"}
-                      </Link>
-                    </td>
-
-                    <td className="px-6 py-4">
-                      <Link
-                        href={`/orders/${order.id}`}
-                        className="block"
-                      >
-                        {order.totalAmount} {order.currency}
-                      </Link>
-                    </td>
-
-                    <td className="px-6 py-4">
-                      <Link
-                        href={`/orders/${order.id}`}
-                        className="block text-zinc-400"
-                      >
-                        {new Date(
-                          order.orderedAt
-                        ).toLocaleDateString("es-ES")}
-                      </Link>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
+          <p className="text-sm text-zinc-500">
+            Valor sincronizado
+          </p>
+          <p className="mt-2 text-2xl font-semibold">
+            {totalValue.toLocaleString(
+              "es-ES",
+              {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              }
+            )}{" "}
+            {currency}
+          </p>
         </div>
       </div>
+
+      <OrdersTable
+        orders={visibleOrders}
+      />
     </div>
   );
 }
