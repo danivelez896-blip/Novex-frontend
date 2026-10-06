@@ -1,11 +1,13 @@
 "use client";
 
+import QRCode from "qrcode";
+import { useRouter } from "next/navigation";
 import {
+  useEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
-import { useRouter } from "next/navigation";
 
 type OrderItem = {
   id: number;
@@ -32,6 +34,14 @@ type ItemDraft = {
   comment: string;
 };
 
+type DraftResponse = {
+  token: string;
+  orderPublicId: string;
+  payload?: Record<string, ItemDraft> | null;
+  photoCount: number;
+  expiresAt: string;
+};
+
 const REASONS = [
   "Talla incorrecta",
   "Producto defectuoso",
@@ -41,35 +51,57 @@ const REASONS = [
   "Otro",
 ];
 
+function createInitialDrafts(
+  items: OrderItem[]
+) {
+  return Object.fromEntries(
+    items.map((item) => [
+      item.id,
+      {
+        selected: false,
+        quantity: 1,
+        reason: "",
+        comment: "",
+      },
+    ])
+  ) as Record<number, ItemDraft>;
+}
+
 export default function ReturnRequestForm({
   orderPublicId,
   items,
   rule,
+  initialDraftToken,
 }: {
   orderPublicId: string;
   items: OrderItem[];
   rule: ReturnRule | null;
+  initialDraftToken?: string;
 }) {
   const router = useRouter();
 
-  const [drafts, setDrafts] = useState<
-    Record<number, ItemDraft>
-  >(() =>
-    Object.fromEntries(
-      items.map((item) => [
-        item.id,
-        {
-          selected: false,
-          quantity: 1,
-          reason: "",
-          comment: "",
-        },
-      ])
-    )
-  );
-
+  const [drafts, setDrafts] =
+    useState<Record<number, ItemDraft>>(
+      () => createInitialDrafts(items)
+    );
   const [photos, setPhotos] =
     useState<File[]>([]);
+  const [draftToken, setDraftToken] =
+    useState<string | null>(
+      initialDraftToken ?? null
+    );
+  const [
+    remotePhotoCount,
+    setRemotePhotoCount,
+  ] = useState(0);
+  const [mobileUrl, setMobileUrl] =
+    useState("");
+  const [qrDataUrl, setQrDataUrl] =
+    useState("");
+  const [
+    creatingMobileLink,
+    setCreatingMobileLink,
+  ] = useState(false);
   const [submitting, setSubmitting] =
     useState(false);
   const [message, setMessage] =
@@ -88,6 +120,144 @@ export default function ReturnRequestForm({
       ),
     [items, drafts]
   );
+
+  const totalPhotoCount =
+    photos.length + remotePhotoCount;
+
+  useEffect(() => {
+    if (!initialDraftToken) {
+      return;
+    }
+
+    const token =
+      initialDraftToken;
+    let cancelled = false;
+
+    async function restoreDraft() {
+      const response = await fetch(
+        `/api/public/returns/drafts/${encodeURIComponent(token)}`,
+        {
+          cache: "no-store",
+        }
+      );
+
+      if (!response.ok) {
+        if (!cancelled) {
+          setMessage(
+            "El enlace compartido ha caducado o ya no está disponible."
+          );
+        }
+        return;
+      }
+
+      const data =
+        (await response.json()) as DraftResponse;
+
+      if (
+        !cancelled &&
+        data.orderPublicId ===
+          orderPublicId
+      ) {
+        if (data.payload) {
+          setDrafts((current) => ({
+            ...current,
+            ...data.payload,
+          }));
+        }
+        setRemotePhotoCount(
+          data.photoCount ?? 0
+        );
+      }
+    }
+
+    void restoreDraft();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    initialDraftToken,
+    orderPublicId,
+  ]);
+
+  useEffect(() => {
+    if (!draftToken) {
+      return;
+    }
+
+    const token =
+      draftToken;
+
+    const timeout =
+      window.setTimeout(() => {
+        void fetch(
+          `/api/public/returns/drafts/${encodeURIComponent(token)}`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              payload: drafts,
+            }),
+          }
+        );
+      }, 500);
+
+    return () =>
+      window.clearTimeout(
+        timeout
+      );
+  }, [draftToken, drafts]);
+
+  useEffect(() => {
+    if (!draftToken) {
+      return;
+    }
+
+    const token =
+      draftToken;
+    let cancelled = false;
+
+    async function refreshDraft() {
+      const response = await fetch(
+        `/api/public/returns/drafts/${encodeURIComponent(token)}`,
+        {
+          cache: "no-store",
+        }
+      );
+
+      if (!response.ok) {
+        return;
+      }
+
+      const data =
+        (await response.json()) as DraftResponse;
+
+      if (!cancelled) {
+        setRemotePhotoCount(
+          data.photoCount ?? 0
+        );
+      }
+    }
+
+    void refreshDraft();
+
+    const interval =
+      window.setInterval(
+        () =>
+          void refreshDraft(),
+        2500
+      );
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(
+        interval
+      );
+    };
+  }, [draftToken]);
 
   function updateDraft(
     itemId: number,
@@ -112,7 +282,9 @@ export default function ReturnRequestForm({
 
     event.target.value = "";
 
-    if (selectedFiles.length === 0) {
+    if (
+      selectedFiles.length === 0
+    ) {
       return;
     }
 
@@ -153,20 +325,29 @@ export default function ReturnRequestForm({
         ...selectedFiles,
       ];
 
-      const unique = combined.filter(
-        (file, index, all) =>
-          all.findIndex(
-            (candidate) =>
-              candidate.name ===
-                file.name &&
-              candidate.size ===
-                file.size &&
-              candidate.lastModified ===
-                file.lastModified
-          ) === index
-      );
+      const unique =
+        combined.filter(
+          (
+            file,
+            index,
+            all
+          ) =>
+            all.findIndex(
+              (candidate) =>
+                candidate.name ===
+                  file.name &&
+                candidate.size ===
+                  file.size &&
+                candidate.lastModified ===
+                  file.lastModified
+            ) === index
+        );
 
-      if (unique.length > 5) {
+      if (
+        unique.length +
+          remotePhotoCount >
+        5
+      ) {
         setMessage(
           "Puedes adjuntar un máximo de 5 fotos en total."
         );
@@ -190,10 +371,139 @@ export default function ReturnRequestForm({
     setMessage("");
   }
 
-  async function uploadPhotos(
+  async function ensureDraft() {
+    if (draftToken) {
+      return draftToken;
+    }
+
+    const response = await fetch(
+      `/api/public/returns/orders/${encodeURIComponent(orderPublicId)}/drafts`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type":
+            "application/json",
+        },
+        body: JSON.stringify({
+          payload: drafts,
+        }),
+      }
+    );
+
+    const data =
+      await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.message ??
+          "No se pudo crear el enlace para el móvil."
+      );
+    }
+
+    setDraftToken(data.token);
+
+    return data.token as string;
+  }
+
+  async function openMobileHandoff() {
+    setCreatingMobileLink(true);
+    setMessage("");
+
+    try {
+      const token =
+        await ensureDraft();
+
+      const url =
+        `${window.location.origin}/return/mobile/${encodeURIComponent(token)}`;
+
+      setMobileUrl(url);
+
+      const qr =
+        await QRCode.toDataURL(
+          url,
+          {
+            width: 220,
+            margin: 1,
+          }
+        );
+
+      setQrDataUrl(qr);
+    } catch (caught) {
+      setMessage(
+        caught instanceof Error
+          ? caught.message
+          : "No se pudo preparar el acceso desde el móvil."
+      );
+    } finally {
+      setCreatingMobileLink(
+        false
+      );
+    }
+  }
+
+  async function uploadFilesToDraft(
+    token: string
+  ) {
+    if (
+      photos.length === 0
+    ) {
+      return true;
+    }
+
+    const formData =
+      new FormData();
+
+    formData.append(
+      "draftToken",
+      token
+    );
+
+    photos.forEach((photo) =>
+      formData.append(
+        "files",
+        photo
+      )
+    );
+
+    const response = await fetch(
+      "/api/return-photos",
+      {
+        method: "POST",
+        body: formData,
+      }
+    );
+
+    if (!response.ok) {
+      const data =
+        await response.json();
+
+      setMessage(
+        data.message ??
+          "No se pudieron guardar las fotos."
+      );
+
+      return false;
+    }
+
+    const data =
+      await response.json();
+
+    setRemotePhotoCount(
+      data.photoCount ??
+        remotePhotoCount +
+          photos.length
+    );
+    setPhotos([]);
+
+    return true;
+  }
+
+  async function uploadFilesToCase(
     casePublicId: string
   ) {
-    if (photos.length === 0) {
+    if (
+      photos.length === 0
+    ) {
       return true;
     }
 
@@ -251,7 +561,7 @@ export default function ReturnRequestForm({
 
     if (
       rule?.requirePhotos &&
-      photos.length === 0
+      totalPhotoCount === 0
     ) {
       setMessage(
         "Esta tienda exige al menos una foto para solicitar la devolución."
@@ -262,6 +572,23 @@ export default function ReturnRequestForm({
     setSubmitting(true);
 
     try {
+      let token =
+        draftToken;
+
+      if (
+        token &&
+        photos.length > 0
+      ) {
+        const uploaded =
+          await uploadFilesToDraft(
+            token
+          );
+
+        if (!uploaded) {
+          return;
+        }
+      }
+
       const response =
         await fetch(
           `/api/public/returns/orders/${encodeURIComponent(orderPublicId)}/cases`,
@@ -271,25 +598,29 @@ export default function ReturnRequestForm({
               "Content-Type":
                 "application/json",
             },
-            body: JSON.stringify({
-              items:
-                selectedItems.map(
-                  (item) => ({
-                    orderItemId:
-                      item.id,
-                    quantity:
-                      drafts[item.id]
-                        .quantity,
-                    reason:
-                      drafts[item.id]
-                        .reason,
-                    customerComment:
-                      drafts[item.id]
-                        .comment ||
-                      undefined,
-                  })
-                ),
-            }),
+            body:
+              JSON.stringify({
+                items:
+                  selectedItems.map(
+                    (item) => ({
+                      orderItemId:
+                        item.id,
+                      quantity:
+                        drafts[item.id]
+                          .quantity,
+                      reason:
+                        drafts[item.id]
+                          .reason,
+                      customerComment:
+                        drafts[item.id]
+                          .comment ||
+                        undefined,
+                    })
+                  ),
+                draftToken:
+                  token ??
+                  undefined,
+              }),
           }
         );
 
@@ -304,16 +635,21 @@ export default function ReturnRequestForm({
         return;
       }
 
-      const photosUploaded =
-        await uploadPhotos(
-          data.publicId
-        );
+      if (
+        !token &&
+        photos.length > 0
+      ) {
+        const uploaded =
+          await uploadFilesToCase(
+            data.publicId
+          );
 
-      if (!photosUploaded) {
-        setMessage(
-          "La devolución se ha creado, pero ha ocurrido un error al guardar las fotos."
-        );
-        return;
+        if (!uploaded) {
+          setMessage(
+            "La devolución se ha creado, pero ha ocurrido un error al guardar las fotos."
+          );
+          return;
+        }
       }
 
       router.push(
@@ -435,9 +771,7 @@ export default function ReturnRequestForm({
                               value={
                                 draft.quantity
                               }
-                              onChange={(
-                                event
-                              ) =>
+                              onChange={(event) =>
                                 updateDraft(
                                   item.id,
                                   {
@@ -457,16 +791,10 @@ export default function ReturnRequestForm({
                                   length:
                                     item.quantity,
                                 },
-                                (
-                                  _,
-                                  index
-                                ) =>
-                                  index +
-                                  1
+                                (_, index) =>
+                                  index + 1
                               ).map(
-                                (
-                                  quantity
-                                ) => (
+                                (quantity) => (
                                   <option
                                     key={
                                       quantity
@@ -492,9 +820,7 @@ export default function ReturnRequestForm({
                               value={
                                 draft.reason
                               }
-                              onChange={(
-                                event
-                              ) =>
+                              onChange={(event) =>
                                 updateDraft(
                                   item.id,
                                   {
@@ -511,9 +837,7 @@ export default function ReturnRequestForm({
                                 Selecciona un motivo
                               </option>
                               {REASONS.map(
-                                (
-                                  reason
-                                ) => (
+                                (reason) => (
                                   <option
                                     key={
                                       reason
@@ -539,9 +863,7 @@ export default function ReturnRequestForm({
                               value={
                                 draft.comment
                               }
-                              onChange={(
-                                event
-                              ) =>
+                              onChange={(event) =>
                                 updateDraft(
                                   item.id,
                                   {
@@ -567,8 +889,7 @@ export default function ReturnRequestForm({
         </div>
       </section>
 
-      {selectedItems.length >
-        0 && (
+      {selectedItems.length > 0 && (
         <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
           <div className="flex items-center gap-2">
             <h2 className="text-lg font-semibold">
@@ -583,7 +904,7 @@ export default function ReturnRequestForm({
           </div>
 
           <p className="mt-2 text-sm text-zinc-500">
-            Puedes añadirlas poco a poco. Máximo 5 fotos en total, JPG, PNG o WEBP y 5 MB por imagen.
+            Máximo 5 fotos en total. Puedes añadirlas desde este dispositivo o usar el móvil.
           </p>
 
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -626,16 +947,79 @@ export default function ReturnRequestForm({
             className="hidden"
           />
 
-          {photos.length > 0 && (
+          <div className="mt-4 hidden rounded-xl border border-dashed border-zinc-300 p-4 md:block">
+            <p className="text-sm font-medium">
+              ¿Las fotos están en tu móvil?
+            </p>
+            <p className="mt-1 text-sm text-zinc-500">
+              Escanea un QR y súbelas desde el teléfono. Esta página detectará las fotos automáticamente.
+            </p>
+
+            <button
+              type="button"
+              onClick={() =>
+                void openMobileHandoff()
+              }
+              disabled={
+                creatingMobileLink
+              }
+              className="mt-3 rounded-xl bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50"
+            >
+              {creatingMobileLink
+                ? "Preparando..."
+                : qrDataUrl
+                  ? "Mostrar QR de nuevo"
+                  : "Subir fotos desde el móvil"}
+            </button>
+
+            {qrDataUrl && (
+              <div className="mt-4 flex flex-wrap items-center gap-5">
+                <img
+                  src={qrDataUrl}
+                  alt="QR para continuar la devolución en el móvil"
+                  className="h-[220px] w-[220px] rounded-lg border border-zinc-200 bg-white p-2"
+                />
+
+                <div className="max-w-sm">
+                  <p className="text-sm font-medium">
+                    Escanea este código con el móvil
+                  </p>
+                  <p className="mt-1 text-xs text-zinc-500">
+                    El enlace es temporal. Puedes subir las fotos y volver a este ordenador, o continuar toda la devolución desde el teléfono.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void navigator.clipboard.writeText(
+                        mobileUrl
+                      )
+                    }
+                    className="mt-3 text-sm font-medium underline"
+                  >
+                    Copiar enlace
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {(photos.length > 0 ||
+            remotePhotoCount > 0) && (
             <div className="mt-4 space-y-2">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-medium">
                   Fotos adjuntas
                 </p>
                 <span className="text-xs text-zinc-500">
-                  {photos.length}/5
+                  {totalPhotoCount}/5
                 </span>
               </div>
+
+              {remotePhotoCount > 0 && (
+                <div className="rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+                  {remotePhotoCount} foto{remotePhotoCount === 1 ? "" : "s"} recibida{remotePhotoCount === 1 ? "" : "s"} desde el móvil. Ya puedes continuar aquí.
+                </div>
+              )}
 
               {photos.map(
                 (photo, index) => (
@@ -646,7 +1030,6 @@ export default function ReturnRequestForm({
                     <p className="min-w-0 truncate text-xs text-zinc-600">
                       {photo.name}
                     </p>
-
                     <button
                       type="button"
                       onClick={() =>
@@ -658,12 +1041,6 @@ export default function ReturnRequestForm({
                     </button>
                   </div>
                 )
-              )}
-
-              {photos.length < 5 && (
-                <p className="text-xs text-zinc-500">
-                  Puedes seguir añadiendo fotos una a una o varias de golpe.
-                </p>
               )}
             </div>
           )}

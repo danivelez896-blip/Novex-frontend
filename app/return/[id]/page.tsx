@@ -69,10 +69,16 @@ async function getPortal(
 
 export default async function ReturnPortalPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{
+    draft?: string;
+  }>;
 }) {
   const { id } = await params;
+  const { draft } =
+    await searchParams;
   const { order, rule } =
     await getPortal(id);
 
@@ -192,6 +198,9 @@ export default async function ReturnPortalPage({
             order.publicId
           }
           items={order.items}
+          initialDraftToken={
+            draft
+          }
           rule={
             rule
               ? {
