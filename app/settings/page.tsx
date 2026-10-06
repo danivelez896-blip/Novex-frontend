@@ -1,3 +1,4 @@
+import { novexFetch } from "@/lib/novex-server";
 type Company = {
   id: number;
   name: string;
@@ -13,18 +14,8 @@ type Store = {
 
 async function getSettingsData() {
   const [storesResponse, companiesResponse] = await Promise.all([
-    fetch(
-      "https://novex-production-f614.up.railway.app/api/stores",
-      {
-        cache: "no-store",
-      }
-    ),
-    fetch(
-      "https://novex-production-f614.up.railway.app/api/companies",
-      {
-        cache: "no-store",
-      }
-    ),
+    novexFetch("/stores"),
+    novexFetch("/companies"),
   ]);
 
   if (!storesResponse.ok || !companiesResponse.ok) {
