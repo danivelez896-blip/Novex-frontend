@@ -1,3 +1,4 @@
+import { novexFetch } from "@/lib/novex-server";
 import Link from "next/link";
 
 type Order = {
@@ -21,11 +22,8 @@ type Order = {
 };
 
 async function getOrders(): Promise<Order[]> {
-  const response = await fetch(
-    "https://novex-production-f614.up.railway.app/api/orders",
-    {
-      cache: "no-store",
-    }
+  const response = await novexFetch(
+    "/orders"
   );
 
   if (!response.ok) {
