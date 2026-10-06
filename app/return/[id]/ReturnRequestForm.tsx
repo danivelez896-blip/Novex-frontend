@@ -106,11 +106,17 @@ export default function ReturnRequestForm({
     useState(false);
   const [message, setMessage] =
     useState("");
+  const [cameraOpen, setCameraOpen] =
+    useState(false);
 
   const galleryInputRef =
     useRef<HTMLInputElement>(null);
   const cameraInputRef =
     useRef<HTMLInputElement>(null);
+  const videoRef =
+    useRef<HTMLVideoElement>(null);
+  const cameraStreamRef =
+    useRef<MediaStream | null>(null);
 
   const selectedItems = useMemo(
     () =>
@@ -357,6 +363,142 @@ export default function ReturnRequestForm({
       setMessage("");
       return unique;
     });
+  }
+
+  async function openCamera() {
+    if (
+      window.matchMedia(
+        "(pointer: coarse)"
+      ).matches
+    ) {
+      cameraInputRef.current?.click();
+      return;
+    }
+
+    if (
+      !navigator.mediaDevices
+        ?.getUserMedia
+    ) {
+      cameraInputRef.current?.click();
+      return;
+    }
+
+    try {
+      const stream =
+        await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: false,
+        });
+
+      cameraStreamRef.current =
+        stream;
+      setCameraOpen(true);
+
+      window.setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject =
+            stream;
+          void videoRef.current.play();
+        }
+      }, 0);
+    } catch {
+      setMessage(
+        "No se pudo abrir la cámara. Revisa el permiso de cámara del navegador o elige una foto de tus archivos."
+      );
+    }
+  }
+
+  function closeCamera() {
+    cameraStreamRef.current
+      ?.getTracks()
+      .forEach((track) =>
+        track.stop()
+      );
+    cameraStreamRef.current =
+      null;
+    setCameraOpen(false);
+  }
+
+  function captureDesktopPhoto() {
+    const video =
+      videoRef.current;
+
+    if (
+      !video ||
+      video.videoWidth === 0 ||
+      video.videoHeight === 0
+    ) {
+      setMessage(
+        "La cámara todavía no está lista."
+      );
+      return;
+    }
+
+    if (
+      totalPhotoCount >= 5
+    ) {
+      setMessage(
+        "Puedes adjuntar un máximo de 5 fotos en total."
+      );
+      return;
+    }
+
+    const canvas =
+      document.createElement(
+        "canvas"
+      );
+
+    canvas.width =
+      video.videoWidth;
+    canvas.height =
+      video.videoHeight;
+
+    const context =
+      canvas.getContext("2d");
+
+    if (!context) {
+      setMessage(
+        "No se pudo capturar la foto."
+      );
+      return;
+    }
+
+    context.drawImage(
+      video,
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
+
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) {
+          setMessage(
+            "No se pudo capturar la foto."
+          );
+          return;
+        }
+
+        const file =
+          new File(
+            [blob],
+            `camera-${Date.now()}.jpg`,
+            {
+              type: "image/jpeg",
+            }
+          );
+
+        setPhotos((current) => [
+          ...current,
+          file,
+        ]);
+        setMessage("");
+        closeCamera();
+      },
+      "image/jpeg",
+      0.9
+    );
   }
 
   function removePhoto(
@@ -911,7 +1053,7 @@ export default function ReturnRequestForm({
             <button
               type="button"
               onClick={() =>
-                cameraInputRef.current?.click()
+                void openCamera()
               }
               className="rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm font-medium transition hover:bg-zinc-50"
             >
@@ -928,6 +1070,40 @@ export default function ReturnRequestForm({
               Elegir de la galería
             </button>
           </div>
+
+          {cameraOpen && (
+            <div className="mt-4 rounded-xl border border-zinc-200 bg-zinc-950 p-3">
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className="aspect-video w-full rounded-lg bg-black object-cover"
+              />
+
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={
+                    closeCamera
+                  }
+                  className="rounded-xl bg-white px-4 py-3 text-sm font-medium text-zinc-900"
+                >
+                  Cancelar
+                </button>
+
+                <button
+                  type="button"
+                  onClick={
+                    captureDesktopPhoto
+                  }
+                  className="rounded-xl bg-white px-4 py-3 text-sm font-medium text-zinc-900"
+                >
+                  Hacer foto
+                </button>
+              </div>
+            </div>
+          )}
 
           <input
             ref={cameraInputRef}
