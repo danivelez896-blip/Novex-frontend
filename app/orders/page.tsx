@@ -1,4 +1,7 @@
-import { novexFetch } from "@/lib/novex-server";
+import {
+  getActiveStoreId,
+  novexFetch,
+} from "@/lib/novex-server";
 import Link from "next/link";
 
 type Order = {
@@ -34,7 +37,20 @@ async function getOrders(): Promise<Order[]> {
 }
 
 export default async function OrdersPage() {
-  const orders = await getOrders();
+  const [orders, activeStoreId] =
+    await Promise.all([
+      getOrders(),
+      getActiveStoreId(),
+    ]);
+
+  const visibleOrders =
+    activeStoreId
+      ? orders.filter(
+          (order) =>
+            order.store?.id ===
+            activeStoreId
+        )
+      : orders;
 
   return (
     <div className="px-8 py-8">
@@ -78,7 +94,7 @@ export default async function OrdersPage() {
             </thead>
 
             <tbody>
-              {orders.map((order) => {
+              {visibleOrders.map((order) => {
                 const customerName = order.customer
                   ? `${order.customer.firstName ?? ""} ${
                       order.customer.lastName ?? ""
