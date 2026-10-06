@@ -2,7 +2,7 @@ import {
   getActiveStoreId,
   novexFetch,
 } from "@/lib/novex-server";
-import Link from "next/link";
+import CasesTable from "./CasesTable";
 
 type Case = {
   id: number;
@@ -27,31 +27,12 @@ async function getCases(): Promise<Case[]> {
   );
 
   if (!response.ok) {
-    throw new Error("No se pudieron cargar las devoluciones");
+    throw new Error(
+      "No se pudieron cargar las devoluciones"
+    );
   }
 
   return response.json();
-}
-
-function getStatusClasses(status: string) {
-  switch (status) {
-    case "APPROVED":
-      return "bg-emerald-500/10 text-emerald-400";
-    case "PENDING_REVIEW":
-      return "bg-amber-500/10 text-amber-400";
-    case "REJECTED":
-      return "bg-red-500/10 text-red-400";
-    case "CLOSED":
-      return "bg-zinc-700 text-zinc-200";
-    case "REFUNDED":
-      return "bg-blue-500/10 text-blue-400";
-    case "INSPECTION":
-      return "bg-purple-500/10 text-purple-400";
-    case "RECEIVED":
-      return "bg-cyan-500/10 text-cyan-400";
-    default:
-      return "bg-zinc-800 text-zinc-300";
-  }
 }
 
 export default async function CasesPage() {
@@ -70,99 +51,89 @@ export default async function CasesPage() {
         )
       : cases;
 
+  const pending =
+    visibleCases.filter(
+      (item) =>
+        item.status ===
+          "PENDING_REVIEW" ||
+        item.status ===
+          "REQUESTED"
+    ).length;
+
+  const inProgress =
+    visibleCases.filter(
+      (item) =>
+        [
+          "APPROVED",
+          "WAITING_CUSTOMER",
+          "IN_TRANSIT",
+          "RECEIVED",
+          "INSPECTION",
+        ].includes(item.status)
+    ).length;
+
+  const completed =
+    visibleCases.filter(
+      (item) =>
+        [
+          "REFUNDED",
+          "CLOSED",
+        ].includes(item.status)
+    ).length;
+
   return (
     <div className="px-8 py-8">
       <div className="mb-8">
-        <p className="text-sm text-zinc-400">Gestión</p>
-        <h1 className="mt-1 text-3xl font-semibold">Devoluciones</h1>
+        <p className="text-sm text-zinc-400">
+          Gestión
+        </p>
+        <h1 className="mt-1 text-3xl font-semibold">
+          Devoluciones
+        </h1>
         <p className="mt-2 text-sm text-zinc-500">
-          Todas las solicitudes de devolución
+          Revisa, filtra y gestiona las solicitudes de la tienda activa.
         </p>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="text-zinc-400">
-              <tr className="border-b border-zinc-800">
-                <th className="px-6 py-4 font-medium">Caso</th>
-                <th className="px-6 py-4 font-medium">Cliente</th>
-                <th className="px-6 py-4 font-medium">Pedido</th>
-                <th className="px-6 py-4 font-medium">Importe</th>
-                <th className="px-6 py-4 font-medium">Fecha</th>
-                <th className="px-6 py-4 font-medium">Estado</th>
-              </tr>
-            </thead>
+      <div className="mb-6 grid gap-4 md:grid-cols-4">
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
+          <p className="text-sm text-zinc-500">
+            Total
+          </p>
+          <p className="mt-2 text-2xl font-semibold">
+            {visibleCases.length}
+          </p>
+        </div>
 
-            <tbody>
-              {visibleCases.map((item) => {
-                const customerName = item.customer
-                  ? `${item.customer.firstName ?? ""} ${
-                      item.customer.lastName ?? ""
-                    }`.trim()
-                  : "Sin cliente";
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
+          <p className="text-sm text-zinc-500">
+            Pendientes
+          </p>
+          <p className="mt-2 text-2xl font-semibold text-amber-400">
+            {pending}
+          </p>
+        </div>
 
-                return (
-                  <tr
-                    key={item.id}
-                    className="border-b border-zinc-800 transition hover:bg-zinc-800/50 last:border-b-0"
-                  >
-                    <td className="px-6 py-4">
-                      <Link
-                        href={`/cases/${item.id}`}
-                        className="font-medium"
-                      >
-                        #{item.id}
-                      </Link>
-                    </td>
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
+          <p className="text-sm text-zinc-500">
+            En curso
+          </p>
+          <p className="mt-2 text-2xl font-semibold text-cyan-400">
+            {inProgress}
+          </p>
+        </div>
 
-                    <td className="px-6 py-4">
-                      <Link href={`/cases/${item.id}`} className="block">
-                        <p>{customerName}</p>
-                        <p className="text-xs text-zinc-500">
-                          {item.customer?.email ?? ""}
-                        </p>
-                      </Link>
-                    </td>
-
-                    <td className="px-6 py-4">
-                      <Link href={`/cases/${item.id}`} className="block">
-                        {item.order?.orderNumber ?? "-"}
-                      </Link>
-                    </td>
-
-                    <td className="px-6 py-4">
-                      <Link href={`/cases/${item.id}`} className="block">
-                        {item.order
-                          ? `${item.order.totalAmount} ${item.order.currency}`
-                          : "-"}
-                      </Link>
-                    </td>
-
-                    <td className="px-6 py-4 text-zinc-400">
-                      <Link href={`/cases/${item.id}`} className="block">
-                        {new Date(item.requestedAt).toLocaleDateString("es-ES")}
-                      </Link>
-                    </td>
-
-                    <td className="px-6 py-4">
-                      <Link href={`/cases/${item.id}`} className="block">
-                        <span
-                          className={`rounded-full px-3 py-1 ${getStatusClasses(
-                            item.status
-                          )}`}
-                        >
-                          {item.status}
-                        </span>
-                      </Link>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
+          <p className="text-sm text-zinc-500">
+            Finalizadas
+          </p>
+          <p className="mt-2 text-2xl font-semibold text-emerald-400">
+            {completed}
+          </p>
         </div>
       </div>
+
+      <CasesTable cases={visibleCases} />
     </div>
   );
 }
