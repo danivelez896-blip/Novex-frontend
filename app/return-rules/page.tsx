@@ -1,40 +1,14 @@
- import Link from "next/link";
-
-type OrderDetail = {
-  id: number;
-  storeId: number;
-  orderNumber: string;
-  totalAmount: string;
-  currency: string;
-  orderedAt: string;
-
-  customer?: {
-    firstName: string | null;
-    lastName: string | null;
-    email: string | null;
-  } | null;
-
-  store?: {
-    id: number;
-    name: string;
-    platform: string;
-  } | null;
-
-  items?: {
-    id: number;
-    productName: string;
-    variantName: string | null;
-    sku: string | null;
-    quantity: number;
-    unitPrice: string;
-    currency: string;
-    isReturnable?: boolean;
-  }[];
-};
+import {
+  getActiveStoreId,
+  novexFetch,
+} from "@/lib/novex-server";
+import ReturnRulesEditor from "./ReturnRulesEditor";
 
 type ReturnRule = {
   id: number;
+  companyId: number;
   storeId: number | null;
+  productId: number | null;
   returnDays: number;
   allowReturns: boolean;
   allowRefund: boolean;
@@ -43,239 +17,181 @@ type ReturnRule = {
   allowProductExchange: boolean;
   requirePhotos: boolean;
   autoApprove: boolean;
+  rejectionMessage: string | null;
   isActive: boolean;
 };
 
-async function getOrder(id: string): Promise<OrderDetail> {
-  const response = await fetch(
-    `https://novex-production-f614.up.railway.app/api/orders/${id}`,
-    {
-      cache: "no-store",
-    }
-  );
+type Store = {
+  id: number;
+  companyId: number;
+  name: string;
+};
 
-  if (!response.ok) {
-    throw new Error("No se pudo cargar el pedido");
-  }
+type Session = {
+  companies: {
+    companyId: number;
+    role:
+      | "OWNER"
+      | "ADMIN"
+      | "EMPLOYEE"
+      | "READ_ONLY";
+  }[];
+};
 
-  return response.json();
-}
-
-async function getReturnRules(): Promise<ReturnRule[]> {
-  const response = await fetch(
-    "https://novex-production-f614.up.railway.app/api/return-rules",
-    {
-      cache: "no-store",
-    }
-  );
-
-  if (!response.ok) {
-    throw new Error("No se pudieron cargar las reglas");
-  }
-
-  return response.json();
-}
-
-export default async function ReturnPortalPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = await params;
-
-  const [order, rules] = await Promise.all([
-    getOrder(id),
-    getReturnRules(),
+async function getData() {
+  const [
+    rulesResponse,
+    storesResponse,
+    meResponse,
+    activeStoreId,
+  ] = await Promise.all([
+    novexFetch("/return-rules"),
+    novexFetch("/stores"),
+    novexFetch("/auth/me"),
+    getActiveStoreId(),
   ]);
+
+  if (
+    !rulesResponse.ok ||
+    !storesResponse.ok ||
+    !meResponse.ok
+  ) {
+    throw new Error(
+      "No se pudieron cargar las reglas de devolución"
+    );
+  }
+
+  const rules: ReturnRule[] =
+    await rulesResponse.json();
+  const stores: Store[] =
+    await storesResponse.json();
+  const session: Session =
+    await meResponse.json();
+
+  const store =
+    stores.find(
+      (item) =>
+        item.id === activeStoreId
+    ) ??
+    stores[0] ??
+    null;
+
+  if (!store) {
+    return {
+      store: null,
+      rule: null,
+      canEdit: false,
+    };
+  }
 
   const rule =
     rules.find(
       (item) =>
-        item.storeId === order.storeId &&
-        item.isActive
+        item.storeId === store.id &&
+        item.productId === null
     ) ?? null;
 
-  const customerName = order.customer
-    ? `${order.customer.firstName ?? ""} ${
-        order.customer.lastName ?? ""
-      }`.trim()
-    : "Cliente";
+  const membership =
+    session.companies.find(
+      (item) =>
+        item.companyId ===
+        store.companyId
+    );
 
-  const returnDeadline = rule
-    ? new Date(
-        new Date(order.orderedAt).getTime() +
-          rule.returnDays * 24 * 60 * 60 * 1000
-      )
-    : null;
+  const canEdit =
+    membership?.role === "OWNER" ||
+    membership?.role === "ADMIN";
 
-  const isWithinReturnPeriod = returnDeadline
-    ? new Date() <= returnDeadline
-    : true;
+  return {
+    store,
+    rule,
+    canEdit,
+  };
+}
 
-  const returnsAllowed =
-    !!rule &&
-    rule.allowReturns &&
-    isWithinReturnPeriod;
+export default async function ReturnRulesPage() {
+  const {
+    store,
+    rule,
+    canEdit,
+  } = await getData();
+
+  if (!store) {
+    return (
+      <div className="px-8 py-8">
+        <h1 className="text-3xl font-semibold">
+          Reglas de devolución
+        </h1>
+        <p className="mt-3 text-sm text-zinc-500">
+          No hay ninguna tienda disponible para configurar.
+        </p>
+      </div>
+    );
+  }
 
   return (
-    <main className="min-h-screen bg-zinc-100 px-6 py-10 text-zinc-900">
-      <div className="mx-auto max-w-3xl">
-        <div className="mb-8 text-center">
+    <div className="px-8 py-8">
+      <div className="mb-8">
+        <p className="text-sm text-zinc-400">
+          Política de devoluciones
+        </p>
+
+        <h1 className="mt-1 text-3xl font-semibold">
+          Reglas
+        </h1>
+
+        <p className="mt-2 text-sm text-zinc-500">
+          Configuración general para{" "}
+          <span className="text-zinc-300">
+            {store.name}
+          </span>
+          . Las reglas específicas por producto se añadirán más adelante en el apartado 11.
+        </p>
+      </div>
+
+      <div className="mb-6 grid gap-4 md:grid-cols-3">
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
           <p className="text-sm text-zinc-500">
-            {order.store?.name ?? "Tienda"}
+            Regla general
           </p>
-
-          <h1 className="mt-2 text-3xl font-semibold">
-            Solicitar una devolución
-          </h1>
-
-          <p className="mt-3 text-sm text-zinc-600">
-            Hola {customerName}, revisa los productos de tu pedido.
+          <p className="mt-2 text-lg font-medium">
+            {rule
+              ? "Configurada"
+              : "Sin configurar"}
           </p>
         </div>
 
-        {rule && (
-          <section className="mb-6 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-            <p className="text-sm font-medium">
-              Condiciones de devolución
-            </p>
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
+          <p className="text-sm text-zinc-500">
+            Plazo
+          </p>
+          <p className="mt-2 text-lg font-medium">
+            {rule
+              ? `${rule.returnDays} días`
+              : "30 días por defecto"}
+          </p>
+        </div>
 
-            <div className="mt-3 space-y-1 text-sm text-zinc-600">
-              <p>
-                Plazo: {rule.returnDays} días
-              </p>
-
-              <p>
-                Reembolso:{" "}
-                {rule.allowRefund ? "Disponible" : "No disponible"}
-              </p>
-
-              <p>
-                Fotos:{" "}
-                {rule.requirePhotos
-                  ? "Obligatorias"
-                  : "No obligatorias"}
-              </p>
-
-              <p>
-                Aprobación:{" "}
-                {rule.autoApprove
-                  ? "Automática"
-                  : "Revisión manual"}
-              </p>
-            </div>
-          </section>
-        )}
-
-        {!rule && (
-          <section className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-5">
-            <p className="text-sm text-amber-800">
-              Esta tienda no tiene una regla de devolución activa.
-            </p>
-          </section>
-        )}
-
-        {rule && !rule.allowReturns && (
-          <section className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-5">
-            <p className="text-sm font-medium text-red-700">
-              Esta tienda no permite devoluciones actualmente.
-            </p>
-          </section>
-        )}
-
-        {rule && !isWithinReturnPeriod && (
-          <section className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-5">
-            <p className="text-sm font-medium text-red-700">
-              El plazo de devolución de este pedido ha finalizado.
-            </p>
-
-            {returnDeadline && (
-              <p className="mt-1 text-sm text-red-600">
-                Fecha límite:{" "}
-                {returnDeadline.toLocaleDateString("es-ES")}
-              </p>
-            )}
-          </section>
-        )}
-
-        <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <div className="mb-6">
-            <p className="text-sm text-zinc-500">
-              Pedido
-            </p>
-
-            <p className="mt-1 font-medium">
-              {order.orderNumber}
-            </p>
-
-            <p className="mt-1 text-sm text-zinc-500">
-              {new Date(
-                order.orderedAt
-              ).toLocaleDateString("es-ES")}
-            </p>
-          </div>
-
-          {!order.items || order.items.length === 0 ? (
-            <p className="text-sm text-zinc-500">
-              Este pedido no tiene productos disponibles.
-            </p>
-          ) : (
-            <div className="space-y-4">
-              {order.items.map((item) => (
-                <div
-                  key={item.id}
-                  className="rounded-xl border border-zinc-200 p-4"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="font-medium">
-                        {item.productName}
-                      </p>
-
-                      <p className="mt-1 text-sm text-zinc-500">
-                        {item.variantName ?? "Sin variante"}
-                      </p>
-
-                      <p className="mt-1 text-xs text-zinc-400">
-                        SKU: {item.sku ?? "-"}
-                      </p>
-                    </div>
-
-                    <div className="text-right">
-                      <p className="text-sm">
-                        {item.unitPrice} {item.currency}
-                      </p>
-
-                      <p className="mt-1 text-xs text-zinc-500">
-                        Cantidad: {item.quantity}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 border-t border-zinc-200 pt-4">
-                    {item.isReturnable && returnsAllowed ? (
-                      <Link
-                        href={`/return/${order.id}/item/${item.id}`}
-                        className="inline-block rounded-xl bg-black px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-800"
-                      >
-                        Devolver este producto
-                      </Link>
-                    ) : (
-                      <span className="text-sm text-red-500">
-                        Este producto no está disponible para devolución
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-
-        <p className="mt-6 text-center text-xs text-zinc-400">
-          Gestión de devoluciones mediante Novex
-        </p>
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
+          <p className="text-sm text-zinc-500">
+            Aprobación
+          </p>
+          <p className="mt-2 text-lg font-medium">
+            {rule
+              ? rule.autoApprove
+                ? "Automática"
+                : "Manual"
+              : "Automática por defecto"}
+          </p>
+        </div>
       </div>
-    </main>
+
+      <ReturnRulesEditor
+        rule={rule}
+        companyId={store.companyId}
+        storeId={store.id}
+        canEdit={canEdit}
+      />
+    </div>
   );
 }
