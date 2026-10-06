@@ -1,12 +1,40 @@
-export async function GET() {
-  const response = await fetch(
-    "https://novex-production-f614.up.railway.app/api/return-rules",
-    {
-      cache: "no-store",
-    }
-  );
+import { novexRouteFetch } from "@/lib/novex-route";
 
-  const data = await response.json();
+export async function GET() {
+  const response =
+    await novexRouteFetch(
+      "/return-rules"
+    );
+
+  const data =
+    await response.json();
+
+  return Response.json(data, {
+    status: response.status,
+  });
+}
+
+export async function POST(
+  request: Request
+) {
+  const body =
+    await request.json();
+
+  const response =
+    await novexRouteFetch(
+      "/return-rules",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type":
+            "application/json",
+        },
+        body: JSON.stringify(body),
+      }
+    );
+
+  const data =
+    await response.json();
 
   return Response.json(data, {
     status: response.status,
