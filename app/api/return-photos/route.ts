@@ -6,85 +6,342 @@ const ALLOWED_TYPES = [
   "image/webp",
 ];
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024;
+const MAX_FILE_SIZE =
+  5 * 1024 * 1024;
 
-export async function POST(request: Request) {
+const NOVEX_API_URL =
+  process.env.NOVEX_API_URL ??
+  "https://novex-production-f614.up.railway.app";
+
+async function uploadToStorage(
+  supabaseUrl: string,
+  supabaseSecretKey: string,
+  entry: File,
+  path: string
+) {
+  const encodedPath = path
+    .split("/")
+    .map(encodeURIComponent)
+    .join("/");
+
+  return fetch(
+    `${supabaseUrl}/storage/v1/object/return-photos/${encodedPath}`,
+    {
+      method: "POST",
+      headers: {
+        apikey:
+          supabaseSecretKey,
+        "Content-Type":
+          entry.type,
+        "x-upsert":
+          "false",
+      },
+      body: entry,
+    }
+  );
+}
+
+export async function POST(
+  request: Request
+) {
   try {
-    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseUrl =
+      process.env.SUPABASE_URL;
     const supabaseSecretKey =
       process.env.SUPABASE_SECRET_KEY;
 
-    if (!supabaseUrl || !supabaseSecretKey) {
+    if (
+      !supabaseUrl ||
+      !supabaseSecretKey
+    ) {
       return Response.json(
         {
           message:
             "Faltan las variables de Supabase en el servidor.",
         },
-        {
-          status: 500,
-        }
+        { status: 500 }
       );
     }
 
-    const formData = await request.formData();
+    const formData =
+      await request.formData();
 
     const casePublicId =
-      formData.get("casePublicId");
-    const files = formData.getAll("files");
+      formData.get(
+        "casePublicId"
+      );
+    const draftToken =
+      formData.get(
+        "draftToken"
+      );
+    const files =
+      formData.getAll(
+        "files"
+      );
 
-    if (!casePublicId) {
+    if (
+      !casePublicId &&
+      !draftToken
+    ) {
       return Response.json(
         {
-          message: "Falta el identificador del caso.",
+          message:
+            "Falta la referencia de la devolución.",
         },
-        {
-          status: 400,
-        }
+        { status: 400 }
       );
     }
 
-    if (files.length === 0) {
+    if (
+      files.length === 0
+    ) {
       return Response.json(
         {
-          message: "No se ha recibido ninguna imagen.",
+          message:
+            "No se ha recibido ninguna imagen.",
         },
-        {
-          status: 400,
-        }
+        { status: 400 }
       );
     }
 
-    // Buscamos el cliente relacionado con el caso
-    const caseResponse = await fetch(
-      `${supabaseUrl}/rest/v1/cases?public_id=eq.${encodeURIComponent(
-        String(casePublicId)
-      )}&select=id,customer_id`,
-      {
-        headers: {
-          apikey: supabaseSecretKey,
+    if (
+      files.length > 5
+    ) {
+      return Response.json(
+        {
+          message:
+            "Puedes adjuntar un máximo de 5 fotos.",
         },
+        { status: 400 }
+      );
+    }
+
+    const normalizedFiles =
+      files.filter(
+        (
+          entry
+        ): entry is File =>
+          entry instanceof File
+      );
+
+    for (const entry of normalizedFiles) {
+      if (
+        !ALLOWED_TYPES.includes(
+          entry.type
+        )
+      ) {
+        return Response.json(
+          {
+            message:
+              "Solo se permiten imágenes JPG, PNG o WEBP.",
+          },
+          { status: 400 }
+        );
       }
-    );
 
-    if (!caseResponse.ok) {
+      if (
+        entry.size >
+        MAX_FILE_SIZE
+      ) {
+        return Response.json(
+          {
+            message:
+              "Cada imagen puede ocupar como máximo 5 MB.",
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    if (draftToken) {
+      const baseUrl =
+        NOVEX_API_URL.replace(
+          /\/$/,
+          ""
+        );
+
+      const draftResponse =
+        await fetch(
+          `${baseUrl}/api/public/returns/drafts/${encodeURIComponent(String(draftToken))}`,
+          {
+            cache: "no-store",
+          }
+        );
+
+      if (
+        !draftResponse.ok
+      ) {
+        return Response.json(
+          {
+            message:
+              "El borrador de devolución ya no está disponible.",
+          },
+          {
+            status:
+              draftResponse.status,
+          }
+        );
+      }
+
+      const draft =
+        await draftResponse.json();
+
+      const remaining =
+        Math.max(
+          0,
+          5 -
+            Number(
+              draft.photoCount ??
+                0
+            )
+        );
+
+      if (
+        normalizedFiles.length >
+        remaining
+      ) {
+        return Response.json(
+          {
+            message:
+              `Solo puedes añadir ${remaining} foto${remaining === 1 ? "" : "s"} más.`,
+          },
+          { status: 400 }
+        );
+      }
+
+      const uploadedFiles = [];
+
+      for (const entry of normalizedFiles) {
+        const extension =
+          entry.name
+            .split(".")
+            .pop()
+            ?.toLowerCase() ??
+          "jpg";
+
+        const path =
+          `drafts/${String(draftToken)}/${randomUUID()}.${extension}`;
+
+        const uploadResponse =
+          await uploadToStorage(
+            supabaseUrl,
+            supabaseSecretKey,
+            entry,
+            path
+          );
+
+        if (
+          !uploadResponse.ok
+        ) {
+          return Response.json(
+            {
+              message:
+                "No se pudo guardar una de las imágenes.",
+            },
+            { status: 500 }
+          );
+        }
+
+        const registerResponse =
+          await fetch(
+            `${baseUrl}/api/public/returns/drafts/${encodeURIComponent(String(draftToken))}/photos`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+              body:
+                JSON.stringify({
+                  fileUrl:
+                    path,
+                  fileName:
+                    entry.name,
+                  fileSizeBytes:
+                    entry.size,
+                  mimeType:
+                    entry.type,
+                }),
+              cache:
+                "no-store",
+            }
+          );
+
+        if (
+          !registerResponse.ok
+        ) {
+          return Response.json(
+            {
+              message:
+                "La foto se ha subido, pero no se pudo asociar al borrador.",
+            },
+            { status: 500 }
+          );
+        }
+
+        uploadedFiles.push({
+          path,
+          name:
+            entry.name,
+        });
+      }
+
+      const refreshed =
+        await fetch(
+          `${baseUrl}/api/public/returns/drafts/${encodeURIComponent(String(draftToken))}`,
+          {
+            cache: "no-store",
+          }
+        );
+
+      const refreshedData =
+        refreshed.ok
+          ? await refreshed.json()
+          : null;
+
+      return Response.json({
+        success: true,
+        files:
+          uploadedFiles,
+        photoCount:
+          refreshedData?.photoCount ??
+          uploadedFiles.length,
+      });
+    }
+
+    const caseResponse =
+      await fetch(
+        `${supabaseUrl}/rest/v1/cases?public_id=eq.${encodeURIComponent(String(casePublicId))}&select=id,customer_id`,
+        {
+          headers: {
+            apikey:
+              supabaseSecretKey,
+          },
+        }
+      );
+
+    if (
+      !caseResponse.ok
+    ) {
       return Response.json(
         {
           message:
             "No se pudo consultar el caso.",
         },
-        {
-          status: 500,
-        }
+        { status: 500 }
       );
     }
 
-    const caseData = await caseResponse.json();
+    const caseData =
+      await caseResponse.json();
 
     const caseId =
-      caseData?.[0]?.id ?? null;
-
+      caseData?.[0]?.id ??
+      null;
     const customerId =
-      caseData?.[0]?.customer_id ?? null;
+      caseData?.[0]
+        ?.customer_id ??
+      null;
 
     if (!caseId) {
       return Response.json(
@@ -92,144 +349,106 @@ export async function POST(request: Request) {
           message:
             "No se encontró la devolución.",
         },
-        {
-          status: 404,
-        }
+        { status: 404 }
       );
     }
 
-    const uploadedFiles: {
-      path: string;
-      name: string;
-    }[] = [];
+    const uploadedFiles = [];
 
-    for (const entry of files) {
-      if (!(entry instanceof File)) {
-        continue;
-      }
-
-      if (!ALLOWED_TYPES.includes(entry.type)) {
-        return Response.json(
-          {
-            message:
-              "Solo se permiten imágenes JPG, PNG o WEBP.",
-          },
-          {
-            status: 400,
-          }
-        );
-      }
-
-      if (entry.size > MAX_FILE_SIZE) {
-        return Response.json(
-          {
-            message:
-              "Cada imagen puede ocupar como máximo 5 MB.",
-          },
-          {
-            status: 400,
-          }
-        );
-      }
-
+    for (const entry of normalizedFiles) {
       const extension =
-        entry.name.split(".").pop()?.toLowerCase() ??
+        entry.name
+          .split(".")
+          .pop()
+          ?.toLowerCase() ??
         "jpg";
 
       const path =
         `cases/${caseId}/${randomUUID()}.${extension}`;
 
-      const encodedPath = path
-        .split("/")
-        .map(encodeURIComponent)
-        .join("/");
-
-      // 1. Subimos la imagen a Supabase Storage
-      const uploadResponse = await fetch(
-        `${supabaseUrl}/storage/v1/object/return-photos/${encodedPath}`,
-        {
-          method: "POST",
-          headers: {
-            apikey: supabaseSecretKey,
-            "Content-Type": entry.type,
-            "x-upsert": "false",
-          },
-          body: entry,
-        }
-      );
-
-      if (!uploadResponse.ok) {
-        const error = await uploadResponse.text();
-
-        console.error(
-          "Error al subir imagen a Supabase:",
-          error
+      const uploadResponse =
+        await uploadToStorage(
+          supabaseUrl,
+          supabaseSecretKey,
+          entry,
+          path
         );
 
+      if (
+        !uploadResponse.ok
+      ) {
         return Response.json(
           {
             message:
               "No se pudo guardar una de las imágenes.",
           },
-          {
-            status: 500,
-          }
+          { status: 500 }
         );
       }
 
-      // 2. Registramos la imagen en la tabla attachments
-      const attachmentResponse = await fetch(
-        `${supabaseUrl}/rest/v1/attachments`,
-        {
-          method: "POST",
-          headers: {
-            apikey: supabaseSecretKey,
-            "Content-Type": "application/json",
-            Prefer: "return=representation",
-          },
-          body: JSON.stringify({
-            case_id: Number(caseId),
-            uploaded_by_type: "CUSTOMER",
-            uploaded_by_user_id: null,
-            uploaded_by_customer_id: customerId,
-            file_type: "IMAGE",
-            file_url: path,
-            file_name: entry.name,
-            file_size_bytes: entry.size,
-            is_customer_visible: true,
-          }),
-        }
-      );
-
-      if (!attachmentResponse.ok) {
-        const error =
-          await attachmentResponse.text();
-
-        console.error(
-          "Error al registrar attachment:",
-          error
+      const attachmentResponse =
+        await fetch(
+          `${supabaseUrl}/rest/v1/attachments`,
+          {
+            method:
+              "POST",
+            headers: {
+              apikey:
+                supabaseSecretKey,
+              "Content-Type":
+                "application/json",
+              Prefer:
+                "return=representation",
+            },
+            body:
+              JSON.stringify({
+                case_id:
+                  Number(
+                    caseId
+                  ),
+                uploaded_by_type:
+                  "CUSTOMER",
+                uploaded_by_user_id:
+                  null,
+                uploaded_by_customer_id:
+                  customerId,
+                file_type:
+                  "IMAGE",
+                file_url:
+                  path,
+                file_name:
+                  entry.name,
+                file_size_bytes:
+                  entry.size,
+                is_customer_visible:
+                  true,
+              }),
+          }
         );
 
+      if (
+        !attachmentResponse.ok
+      ) {
         return Response.json(
           {
             message:
               "La foto se ha subido, pero no se pudo registrar en la base de datos.",
           },
-          {
-            status: 500,
-          }
+          { status: 500 }
         );
       }
 
       uploadedFiles.push({
         path,
-        name: entry.name,
+        name:
+          entry.name,
       });
     }
 
     return Response.json({
       success: true,
-      files: uploadedFiles,
+      files:
+        uploadedFiles,
     });
   } catch (error) {
     console.error(error);
@@ -239,9 +458,7 @@ export async function POST(request: Request) {
         message:
           "Ha ocurrido un error al subir las imágenes.",
       },
-      {
-        status: 500,
-      }
+      { status: 500 }
     );
   }
 }
