@@ -25,7 +25,6 @@ type OrderItem = {
 type ReturnRule = {
   requirePhotos: boolean;
   allowReturns: boolean;
-  isActive: boolean;
   withinReturnPeriod: boolean;
 };
 
@@ -901,8 +900,7 @@ export default function ReturnRequestForm({
 
   const canSubmit =
     Boolean(
-      rule?.isActive &&
-      rule.allowReturns &&
+      rule?.allowReturns &&
       rule.withinReturnPeriod
     );
 
