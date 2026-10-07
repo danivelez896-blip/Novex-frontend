@@ -146,31 +146,32 @@ export default async function ReturnPortalPage({
         )}
 
         {rule &&
-          !rule.allowReturns && (
+          (!rule.allowReturns ||
+            !rule.withinReturnPeriod) && (
             <section className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-5">
               <p className="text-sm font-medium text-red-700">
-                Esta tienda no permite devoluciones actualmente.
-              </p>
-            </section>
-          )}
-
-        {rule &&
-          !rule.withinReturnPeriod && (
-            <section className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-5">
-              <p className="text-sm font-medium text-red-700">
-                El plazo de devolución de este pedido ha finalizado.
+                Este pedido no cumple las condiciones necesarias para realizar una devolución.
               </p>
 
-              {rule.returnDeadline && (
-                <p className="mt-1 text-sm text-red-600">
-                  Fecha límite:{" "}
-                  {new Date(
-                    rule.returnDeadline
-                  ).toLocaleDateString(
-                    "es-ES"
-                  )}
-                </p>
-              )}
+              <p className="mt-2 text-sm text-red-600">
+                Motivo:{" "}
+                {!rule.allowReturns
+                  ? rule.rejectionMessage ||
+                    "La tienda no acepta devoluciones actualmente."
+                  : "El plazo de devolución de este pedido ha finalizado."}
+              </p>
+
+              {rule.withinReturnPeriod === false &&
+                rule.returnDeadline && (
+                  <p className="mt-1 text-sm text-red-600">
+                    Fecha límite:{" "}
+                    {new Date(
+                      rule.returnDeadline
+                    ).toLocaleDateString(
+                      "es-ES"
+                    )}
+                  </p>
+                )}
             </section>
           )}
 
