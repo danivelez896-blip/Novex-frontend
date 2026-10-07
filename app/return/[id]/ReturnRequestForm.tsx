@@ -85,9 +85,7 @@ export default function ReturnRequestForm({
       () => createInitialDrafts(items)
     );
   const [selectedIds, setSelectedIds] =
-    useState<Set<number>>(
-      () => new Set()
-    );
+    useState<number[]>([]);
   const [photos, setPhotos] =
     useState<File[]>([]);
   const [draftToken, setDraftToken] =
@@ -125,7 +123,7 @@ export default function ReturnRequestForm({
   const selectedItems = useMemo(
     () =>
       items.filter((item) =>
-        selectedIds.has(item.id)
+        selectedIds.includes(item.id)
       ),
     [items, selectedIds]
   );
@@ -174,19 +172,17 @@ export default function ReturnRequestForm({
           }));
 
           setSelectedIds(
-            new Set(
-              Object.entries(
-                data.payload
-              )
-                .filter(
-                  ([, value]) =>
-                    value?.selected
-                )
-                .map(([key]) =>
-                  Number(key)
-                )
-                .filter(Number.isFinite)
+            Object.entries(
+              data.payload
             )
+              .filter(
+                ([, value]) =>
+                  value?.selected
+              )
+              .map(([key]) =>
+                Number(key)
+              )
+              .filter(Number.isFinite)
           );
         }
         setRemotePhotoCount(
@@ -301,18 +297,15 @@ export default function ReturnRequestForm({
     itemId: number,
     selected: boolean
   ) {
-    setSelectedIds((current) => {
-      const next =
-        new Set(current);
-
-      if (selected) {
-        next.add(itemId);
-      } else {
-        next.delete(itemId);
-      }
-
-      return next;
-    });
+    setSelectedIds((current) =>
+      selected
+        ? current.includes(itemId)
+          ? current
+          : [...current, itemId]
+        : current.filter(
+            (id) => id !== itemId
+          )
+    );
 
     updateDraft(itemId, {
       selected,
@@ -879,7 +872,7 @@ export default function ReturnRequestForm({
               <div
                 key={item.id}
                 className={`rounded-xl border p-4 ${
-                  draft?.selected
+                  selectedIds.includes(item.id)
                     ? "border-zinc-400 bg-zinc-50"
                     : "border-zinc-200"
                 }`}
