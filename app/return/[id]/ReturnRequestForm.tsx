@@ -16,6 +16,7 @@ type OrderItem = {
   sku: string | null;
   quantity: number;
   returnableQuantity: number;
+  returnabilityReason: string | null;
   unitPrice: string;
   currency: string;
   isReturnable: boolean;
@@ -993,7 +994,9 @@ export default function ReturnRequestForm({
                       <p className="mt-3 text-sm text-red-500">
                         {item.returnableQuantity === 0
                           ? "Este producto ya no tiene unidades disponibles para devolver."
-                          : "Este producto no está disponible para devolución."}
+                          : item.returnabilityReason
+                            ? `Este producto no está disponible para devolución. Motivo: ${item.returnabilityReason}`
+                            : "Este producto no está disponible para devolución."}
                       </p>
                     )}
 
