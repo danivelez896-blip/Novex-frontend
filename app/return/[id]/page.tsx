@@ -44,6 +44,7 @@ type PortalResponse = {
     requirePhotos: boolean;
     autoApprove: boolean;
     rejectionMessage: string | null;
+    customerConditions: string[];
     isActive: boolean;
     returnDeadline: string;
     withinReturnPeriod: boolean;
@@ -123,6 +124,31 @@ export default async function ReturnPortalPage({
                   : "No obligatorias"}
               </p>
             </div>
+
+            {rule.customerConditions.length > 0 && (
+              <div className="mt-4 border-t border-zinc-200 pt-4">
+                <p className="text-sm font-medium text-zinc-700">
+                  Otras condiciones
+                </p>
+                <ul className="mt-2 space-y-2 text-sm text-zinc-600">
+                  {rule.customerConditions.map(
+                    (condition) => (
+                      <li
+                        key={condition}
+                        className="flex gap-2"
+                      >
+                        <span aria-hidden="true">
+                          •
+                        </span>
+                        <span>
+                          {condition}
+                        </span>
+                      </li>
+                    )
+                  )}
+                </ul>
+              </div>
+            )}
           </section>
         )}
 

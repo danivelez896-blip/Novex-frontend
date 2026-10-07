@@ -20,6 +20,7 @@ type ReturnRule = {
   requirePhotos: boolean;
   autoApprove: boolean;
   rejectionMessage: string | null;
+  customerConditions: string[];
   isActive: boolean;
 };
 
@@ -38,6 +39,7 @@ const DEFAULT_DRAFT: Draft = {
   requirePhotos: false,
   autoApprove: true,
   rejectionMessage: null,
+  customerConditions: [],
   isActive: true,
 };
 
@@ -75,6 +77,8 @@ export default function ReturnRulesEditor({
               rule.autoApprove,
             rejectionMessage:
               rule.rejectionMessage,
+            customerConditions:
+              rule.customerConditions ?? [],
             isActive:
               rule.isActive,
           }
@@ -86,6 +90,10 @@ export default function ReturnRulesEditor({
     useState<string | null>(null);
   const [error, setError] =
     useState<string | null>(null);
+  const [
+    conditionInput,
+    setConditionInput,
+  ] = useState("");
 
   const approvalText = useMemo(
     () =>
@@ -166,6 +174,59 @@ export default function ReturnRulesEditor({
     } finally {
       setSaving(false);
     }
+  }
+
+  const conditionSuggestions = [
+    "El producto debe estar sin usar.",
+    "El producto debe conservar su embalaje original.",
+    "Las etiquetas deben permanecer intactas.",
+    "El producto no debe haberse abierto.",
+  ];
+
+  function addCondition(
+    value: string
+  ) {
+    const condition =
+      value.trim();
+
+    if (!condition) {
+      return;
+    }
+
+    setDraft((current) => {
+      if (
+        current.customerConditions.some(
+          (item) =>
+            item.toLowerCase() ===
+            condition.toLowerCase()
+        )
+      ) {
+        return current;
+      }
+
+      return {
+        ...current,
+        customerConditions: [
+          ...current.customerConditions,
+          condition,
+        ],
+      };
+    });
+
+    setConditionInput("");
+  }
+
+  function removeCondition(
+    index: number
+  ) {
+    setDraft((current) => ({
+      ...current,
+      customerConditions:
+        current.customerConditions.filter(
+          (_, itemIndex) =>
+            itemIndex !== index
+        ),
+    }));
   }
 
   const toggles: {
@@ -301,6 +362,116 @@ export default function ReturnRulesEditor({
                 />
               </label>
             )
+          )}
+        </div>
+
+        <div className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950 p-5">
+          <div>
+            <p className="text-sm font-medium">
+              Condiciones visibles para el comprador
+            </p>
+            <p className="mt-1 text-xs leading-5 text-zinc-500">
+              Añade las condiciones que quieras comunicar al cliente. Novex las mostrará en el portal de devolución.
+            </p>
+          </div>
+
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+            <input
+              type="text"
+              disabled={!canEdit}
+              value={conditionInput}
+              onChange={(event) =>
+                setConditionInput(
+                  event.target.value
+                )
+              }
+              onKeyDown={(event) => {
+                if (
+                  event.key === "Enter"
+                ) {
+                  event.preventDefault();
+                  addCondition(
+                    conditionInput
+                  );
+                }
+              }}
+              placeholder="Ej.: El producto debe estar sin abrir"
+              className="min-w-0 flex-1 rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm outline-none placeholder:text-zinc-600 disabled:opacity-60"
+            />
+
+            <button
+              type="button"
+              disabled={
+                !canEdit ||
+                !conditionInput.trim()
+              }
+              onClick={() =>
+                addCondition(
+                  conditionInput
+                )
+              }
+              className="rounded-xl border border-zinc-700 px-4 py-3 text-sm font-medium disabled:opacity-50"
+            >
+              Añadir condición
+            </button>
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            {conditionSuggestions.map(
+              (suggestion) => (
+                <button
+                  type="button"
+                  key={suggestion}
+                  disabled={!canEdit}
+                  onClick={() =>
+                    addCondition(
+                      suggestion
+                    )
+                  }
+                  className="rounded-full border border-zinc-700 px-3 py-1.5 text-xs text-zinc-400 transition hover:border-zinc-600 hover:text-zinc-200 disabled:opacity-50"
+                >
+                  + {suggestion}
+                </button>
+              )
+            )}
+          </div>
+
+          {draft.customerConditions.length > 0 ? (
+            <div className="mt-5 space-y-2">
+              {draft.customerConditions.map(
+                (
+                  condition,
+                  index
+                ) => (
+                  <div
+                    key={`${condition}-${index}`}
+                    className="flex items-start justify-between gap-4 rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3"
+                  >
+                    <p className="text-sm text-zinc-300">
+                      {condition}
+                    </p>
+
+                    {canEdit && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          removeCondition(
+                            index
+                          )
+                        }
+                        className="shrink-0 text-xs text-zinc-500 hover:text-red-400"
+                      >
+                        Quitar
+                      </button>
+                    )}
+                  </div>
+                )
+              )}
+            </div>
+          ) : (
+            <p className="mt-4 text-xs text-zinc-600">
+              Aún no has añadido condiciones personalizadas.
+            </p>
           )}
         </div>
 

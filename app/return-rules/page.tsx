@@ -18,6 +18,7 @@ type ReturnRule = {
   requirePhotos: boolean;
   autoApprove: boolean;
   rejectionMessage: string | null;
+  customerConditions: string[];
   isActive: boolean;
 };
 
