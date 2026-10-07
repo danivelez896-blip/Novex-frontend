@@ -881,7 +881,7 @@ export default function ReturnRequestForm({
                   <input
                     type="checkbox"
                     checked={
-                      selectedIds.has(
+                      selectedIds.includes(
                         item.id
                       )
                     }
@@ -932,7 +932,7 @@ export default function ReturnRequestForm({
                       </p>
                     )}
 
-                    {selectedIds.has(
+                    {selectedIds.includes(
                       item.id
                     ) &&
                       selectable && (
