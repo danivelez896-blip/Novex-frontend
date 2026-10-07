@@ -34,7 +34,7 @@ type CaseDetail = {
 
 async function getCase(
   publicId: string
-): Promise<CaseDetail> {
+): Promise<CaseDetail | null> {
   const response = await fetch(
     `${NOVEX_API_URL.replace(/\/$/, "")}/api/public/returns/cases/${encodeURIComponent(publicId)}`,
     {
@@ -43,9 +43,7 @@ async function getCase(
   );
 
   if (!response.ok) {
-    throw new Error(
-      "No se pudo cargar la devolución"
-    );
+    return null;
   }
 
   return response.json();
@@ -275,6 +273,36 @@ export default async function ReturnSuccessPage({
 
   const caseData =
     await getCase(caseId);
+
+  if (!caseData) {
+    return (
+      <main className="min-h-screen bg-zinc-100 px-6 py-10 text-zinc-900">
+        <div className="mx-auto max-w-xl">
+          <section className="rounded-2xl border border-zinc-200 bg-white p-8 text-center shadow-sm">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-zinc-100 text-2xl text-zinc-600">
+              !
+            </div>
+
+            <h1 className="mt-5 text-2xl font-semibold">
+              Devolución no disponible
+            </h1>
+
+            <p className="mt-3 text-sm text-zinc-600">
+              No hemos podido encontrar esta devolución. Comprueba el enlace o contacta con la tienda si necesitas ayuda.
+            </p>
+
+            <Link
+              href={`/return/${id}`}
+              className="mt-6 inline-block text-sm font-medium text-zinc-600 transition hover:text-black"
+            >
+              Volver al pedido
+            </Link>
+          </section>
+        </div>
+      </main>
+    );
+  }
+
   const status =
     getStatusContent(
       caseData.status
