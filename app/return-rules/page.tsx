@@ -150,31 +150,6 @@ export default async function ReturnRulesPage() {
         </p>
       </div>
 
-      <div className="mb-6 grid gap-4 md:grid-cols-2">
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
-          <p className="text-sm text-zinc-500">
-            Regla general
-          </p>
-          <p className="mt-2 text-lg font-medium">
-            {rule
-              ? "Configurada"
-              : "Sin configurar"}
-          </p>
-        </div>
-
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
-          <p className="text-sm text-zinc-500">
-            Plazo
-          </p>
-          <p className="mt-2 text-lg font-medium">
-            {rule
-              ? `${rule.returnDays} días`
-              : "30 días por defecto"}
-          </p>
-        </div>
-
-      </div>
-
       <ReturnRulesEditor
         rule={rule}
         companyId={store.companyId}
