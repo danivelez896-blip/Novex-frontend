@@ -84,6 +84,10 @@ export default function ReturnRequestForm({
     useState<Record<number, ItemDraft>>(
       () => createInitialDrafts(items)
     );
+  const [selectedIds, setSelectedIds] =
+    useState<Set<number>>(
+      () => new Set()
+    );
   const [photos, setPhotos] =
     useState<File[]>([]);
   const [draftToken, setDraftToken] =
@@ -120,11 +124,10 @@ export default function ReturnRequestForm({
 
   const selectedItems = useMemo(
     () =>
-      items.filter(
-        (item) =>
-          drafts[item.id]?.selected
+      items.filter((item) =>
+        selectedIds.has(item.id)
       ),
-    [items, drafts]
+    [items, selectedIds]
   );
 
   const totalPhotoCount =
@@ -169,6 +172,22 @@ export default function ReturnRequestForm({
             ...current,
             ...data.payload,
           }));
+
+          setSelectedIds(
+            new Set(
+              Object.entries(
+                data.payload
+              )
+                .filter(
+                  ([, value]) =>
+                    value?.selected
+                )
+                .map(([key]) =>
+                  Number(key)
+                )
+                .filter(Number.isFinite)
+            )
+          );
         }
         setRemotePhotoCount(
           data.photoCount ?? 0
@@ -276,6 +295,28 @@ export default function ReturnRequestForm({
         ...patch,
       },
     }));
+  }
+
+  function setItemSelected(
+    itemId: number,
+    selected: boolean
+  ) {
+    setSelectedIds((current) => {
+      const next =
+        new Set(current);
+
+      if (selected) {
+        next.add(itemId);
+      } else {
+        next.delete(itemId);
+      }
+
+      return next;
+    });
+
+    updateDraft(itemId, {
+      selected,
+    });
   }
 
   function handlePhotos(
@@ -847,21 +888,17 @@ export default function ReturnRequestForm({
                   <input
                     type="checkbox"
                     checked={
-                      draft?.selected ??
-                      false
+                      selectedIds.has(
+                        item.id
+                      )
                     }
                     disabled={
                       !selectable
                     }
                     onChange={(event) =>
-                      updateDraft(
+                      setItemSelected(
                         item.id,
-                        {
-                          selected:
-                            event
-                              .target
-                              .checked,
-                        }
+                        event.target.checked
                       )
                     }
                     className="mt-1 h-4 w-4"
@@ -902,7 +939,9 @@ export default function ReturnRequestForm({
                       </p>
                     )}
 
-                    {draft?.selected &&
+                    {selectedIds.has(
+                      item.id
+                    ) &&
                       selectable && (
                         <div className="mt-4 grid gap-4 border-t border-zinc-200 pt-4 md:grid-cols-2">
                           <div>
