@@ -28,6 +28,7 @@ type PortalResponse = {
       sku: string | null;
       quantity: number;
       returnableQuantity: number;
+      returnabilityReason: string | null;
       unitPrice: string;
       currency: string;
       isReturnable: boolean;
@@ -116,22 +117,10 @@ export default async function ReturnPortalPage({
                 Plazo: {rule.returnDays} días
               </p>
               <p>
-                Reembolso:{" "}
-                {rule.allowRefund
-                  ? "Disponible"
-                  : "No disponible"}
-              </p>
-              <p>
                 Fotos:{" "}
                 {rule.requirePhotos
                   ? "Obligatorias"
                   : "No obligatorias"}
-              </p>
-              <p>
-                Aprobación:{" "}
-                {rule.autoApprove
-                  ? "Automática"
-                  : "Revisión manual"}
               </p>
             </div>
           </section>
