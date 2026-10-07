@@ -27,6 +27,7 @@ type PortalResponse = {
       variantName: string | null;
       sku: string | null;
       quantity: number;
+      returnableQuantity: number;
       unitPrice: string;
       currency: string;
       isReturnable: boolean;
