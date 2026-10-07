@@ -40,6 +40,10 @@ type DraftResponse = {
   payload?: Record<string, ItemDraft> | null;
   photoCount: number;
   expiresAt: string;
+  status?: string;
+  consumedAt?: string | null;
+  casePublicId?: string | null;
+  caseStatus?: string | null;
 };
 
 const REASONS = [
@@ -260,6 +264,15 @@ export default function ReturnRequestForm({
         setRemotePhotoCount(
           data.photoCount ?? 0
         );
+
+        if (
+          data.status === "CONSUMED" &&
+          data.casePublicId
+        ) {
+          router.replace(
+            `/return/${orderPublicId}/success/${data.casePublicId}`
+          );
+        }
       }
     }
 
@@ -278,7 +291,11 @@ export default function ReturnRequestForm({
         interval
       );
     };
-  }, [draftToken]);
+  }, [
+    draftToken,
+    orderPublicId,
+    router,
+  ]);
 
   function updateDraft(
     itemId: number,
@@ -589,8 +606,14 @@ export default function ReturnRequestForm({
       const token =
         await ensureDraft();
 
+      const mobileOrigin =
+        window.location.hostname ===
+        "localhost"
+          ? `${window.location.protocol}//192.168.1.36:3000`
+          : window.location.origin;
+
       const url =
-        `${window.location.origin}/return/mobile/${encodeURIComponent(token)}`;
+        `${mobileOrigin}/return/mobile/${encodeURIComponent(token)}`;
 
       setMobileUrl(url);
 
