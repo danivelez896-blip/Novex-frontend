@@ -15,6 +15,7 @@ type OrderItem = {
   variantName: string | null;
   sku: string | null;
   quantity: number;
+  returnableQuantity: number;
   unitPrice: string;
   currency: string;
   isReturnable: boolean;
@@ -923,6 +924,7 @@ export default function ReturnRequestForm({
 
             const selectable =
               item.isReturnable &&
+              item.returnableQuantity > 0 &&
               canSubmit;
 
             return (
@@ -980,12 +982,18 @@ export default function ReturnRequestForm({
                           Comprados:{" "}
                           {item.quantity}
                         </p>
+                        <p className="mt-1 text-xs text-zinc-500">
+                          Disponibles para devolver:{" "}
+                          {item.returnableQuantity}
+                        </p>
                       </div>
                     </div>
 
                     {!selectable && (
                       <p className="mt-3 text-sm text-red-500">
-                        Este producto no está disponible para devolución.
+                        {item.returnableQuantity === 0
+                          ? "Este producto ya no tiene unidades disponibles para devolver."
+                          : "Este producto no está disponible para devolución."}
                       </p>
                     )}
 
@@ -1020,7 +1028,7 @@ export default function ReturnRequestForm({
                               {Array.from(
                                 {
                                   length:
-                                    item.quantity,
+                                    item.returnableQuantity,
                                 },
                                 (_, index) =>
                                   index + 1
