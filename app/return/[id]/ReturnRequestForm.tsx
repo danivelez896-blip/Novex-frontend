@@ -136,6 +136,48 @@ export default function ReturnRequestForm({
     photos.length + remotePhotoCount;
 
   useEffect(() => {
+    if (!cameraOpen) {
+      return;
+    }
+
+    const video =
+      videoRef.current;
+    const stream =
+      cameraStreamRef.current;
+
+    if (!video || !stream) {
+      return;
+    }
+
+    video.srcObject = stream;
+
+    const startPlayback = () => {
+      void video.play().catch(() => {
+        setMessage(
+          "La cámara está abierta, pero el navegador no pudo iniciar la vista previa. Vuelve a pulsar Hacer foto."
+        );
+      });
+    };
+
+    if (video.readyState >= 1) {
+      startPlayback();
+    } else {
+      video.addEventListener(
+        "loadedmetadata",
+        startPlayback,
+        { once: true }
+      );
+    }
+
+    return () => {
+      video.removeEventListener(
+        "loadedmetadata",
+        startPlayback
+      );
+    };
+  }, [cameraOpen]);
+
+  useEffect(() => {
     if (!initialDraftToken) {
       return;
     }
@@ -444,14 +486,6 @@ export default function ReturnRequestForm({
       cameraStreamRef.current =
         stream;
       setCameraOpen(true);
-
-      window.setTimeout(() => {
-        if (videoRef.current) {
-          videoRef.current.srcObject =
-            stream;
-          void videoRef.current.play();
-        }
-      }, 0);
     } catch {
       setMessage(
         "No se pudo abrir la cámara. Revisa el permiso de cámara del navegador o elige una foto de tus archivos."
@@ -609,7 +643,7 @@ export default function ReturnRequestForm({
       const mobileOrigin =
         window.location.hostname ===
         "localhost"
-          ? `${window.location.protocol}//192.168.1.36:3000`
+          ? `${window.location.protocol}//192.168.1.36${window.location.port ? `:${window.location.port}` : ""}`
           : window.location.origin;
 
       const url =
