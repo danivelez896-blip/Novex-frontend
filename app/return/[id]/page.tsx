@@ -46,7 +46,7 @@ type PortalResponse = {
 
 async function getPortal(
   publicId: string
-): Promise<PortalResponse> {
+): Promise<PortalResponse | null> {
   const response = await fetch(
     `${NOVEX_API_URL.replace(/\/$/, "")}/api/public/returns/orders/${encodeURIComponent(publicId)}`,
     {
@@ -55,9 +55,7 @@ async function getPortal(
   );
 
   if (!response.ok) {
-    throw new Error(
-      "No se pudo cargar el pedido"
-    );
+    return null;
   }
 
   return response.json();
@@ -75,8 +73,37 @@ export default async function ReturnPortalPage({
   const { id } = await params;
   const { draft } =
     await searchParams;
-  const { order, rule } =
+  const portal =
     await getPortal(id);
+
+  if (!portal) {
+    return (
+      <main className="min-h-screen bg-zinc-100 px-6 py-10 text-zinc-900">
+        <div className="mx-auto max-w-xl">
+          <section className="rounded-2xl border border-zinc-200 bg-white p-8 text-center shadow-sm">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-zinc-100 text-2xl text-zinc-600">
+              !
+            </div>
+
+            <h1 className="mt-5 text-2xl font-semibold">
+              Enlace de devolución no disponible
+            </h1>
+
+            <p className="mt-3 text-sm text-zinc-600">
+              No hemos podido encontrar este pedido. Comprueba el enlace o contacta con la tienda si necesitas ayuda.
+            </p>
+
+            <p className="mt-6 text-xs text-zinc-400">
+              Gestión de devoluciones mediante Novex
+            </p>
+          </section>
+        </div>
+      </main>
+    );
+  }
+
+  const { order, rule } =
+    portal;
 
   const customerName =
     order.customer
