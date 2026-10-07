@@ -13,6 +13,9 @@ type DraftData = {
   orderPublicId: string;
   photoCount: number;
   expiresAt: string;
+  status?: string;
+  consumedAt?: string | null;
+  casePublicId?: string | null;
 };
 
 export default function ReturnMobilePage({
@@ -62,6 +65,16 @@ export default function ReturnMobilePage({
 
     const data =
       (await response.json()) as DraftData;
+
+    if (
+      data.status === "CONSUMED"
+    ) {
+      setDraft(null);
+      setMessage(
+        "Esta devolución ya se completó. El enlace del móvil ya no puede reutilizarse."
+      );
+      return;
+    }
 
     setDraft(data);
   }
@@ -171,10 +184,10 @@ export default function ReturnMobilePage({
       <main className="min-h-screen bg-zinc-100 px-5 py-8 text-zinc-900">
         <div className="mx-auto max-w-md rounded-2xl border border-red-200 bg-white p-6 shadow-sm">
           <h1 className="text-xl font-semibold">
-            Enlace no disponible
+            Enlace de devolución no disponible
           </h1>
           <p className="mt-2 text-sm text-zinc-600">
-            {message}
+            {message || "Este enlace ha caducado, ya se ha utilizado o no es válido."}
           </p>
         </div>
       </main>
