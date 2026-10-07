@@ -319,52 +319,6 @@ export default function ReturnRulesEditor({
       )}
 
       <section className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
-        <div>
-          <p className="text-sm text-zinc-500">
-            Plazo de devolución
-          </p>
-          <div className="mt-3 flex max-w-xs items-center gap-3">
-            <input
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              disabled={!canEdit}
-              value={returnDaysInput}
-              onChange={(event) => {
-                const value =
-                  event.target.value;
-
-                if (
-                  value === "" ||
-                  /^\d{0,3}$/.test(
-                    value
-                  )
-                ) {
-                  setReturnDaysInput(
-                    value
-                  );
-                }
-              }}
-              onBlur={() => {
-                if (
-                  returnDaysInput ===
-                  ""
-                ) {
-                  setReturnDaysInput(
-                    String(
-                      draft.returnDays
-                    )
-                  );
-                }
-              }}
-              className="w-28 rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm outline-none disabled:opacity-60"
-            />
-            <span className="text-sm text-zinc-400">
-              días
-            </span>
-          </div>
-        </div>
-
         <div className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950 p-5">
           <p className="text-sm font-medium">
             Modo de aprobación
@@ -424,6 +378,56 @@ export default function ReturnRulesEditor({
           <p className="mt-3 text-xs text-zinc-500">
             {approvalText}
           </p>
+        </div>
+
+        <div className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950 p-5">
+          <p className="text-sm font-medium">
+            Plazo de devolución
+          </p>
+          <p className="mt-1 text-xs leading-5 text-zinc-500">
+            Número de días que tiene el comprador para solicitar una devolución.
+          </p>
+
+          <div className="mt-4 flex max-w-xs items-center gap-3">
+            <input
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              disabled={!canEdit}
+              value={returnDaysInput}
+              onChange={(event) => {
+                const value =
+                  event.target.value;
+
+                if (
+                  value === "" ||
+                  /^\d{0,3}$/.test(
+                    value
+                  )
+                ) {
+                  setReturnDaysInput(
+                    value
+                  );
+                }
+              }}
+              onBlur={() => {
+                if (
+                  returnDaysInput ===
+                  ""
+                ) {
+                  setReturnDaysInput(
+                    String(
+                      draft.returnDays
+                    )
+                  );
+                }
+              }}
+              className="w-28 rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm outline-none disabled:opacity-60"
+            />
+            <span className="text-sm text-zinc-400">
+              días
+            </span>
+          </div>
         </div>
 
         <div className="mt-6 grid gap-3 lg:grid-cols-2">
