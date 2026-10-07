@@ -85,6 +85,23 @@ const STATUS_ORDER = [
   "REFUNDED",
 ];
 
+const SHIPMENT_STATUS_LABELS: Record<
+  string,
+  string
+> = {
+  LABEL_CREATED: "Etiqueta creada",
+  PENDING_DROPOFF:
+    "Pendiente de entrega al transportista",
+  IN_TRANSIT: "En tránsito",
+  DELIVERED: "Entregado",
+  INCIDENT:
+    "Incidencia en el transporte",
+  LOST: "Envío extraviado",
+  CANCELLED: "Envío cancelado",
+};
+
+
+
 function formatDate(
   value: string
 ) {
@@ -103,15 +120,14 @@ function getStatusContent(
   status: string
 ) {
   switch (status) {
-    case "APPROVED":
+    case "REQUESTED":
       return {
-        title:
-          "Devolución aprobada",
+        title: "Solicitud enviada",
         description:
-          "Tu solicitud cumple las condiciones de devolución y ha sido aprobada automáticamente.",
+          "Hemos recibido correctamente tu solicitud de devolución.",
         symbol: "✓",
         symbolClasses:
-          "bg-emerald-100 text-emerald-700",
+          "bg-zinc-100 text-zinc-700",
       };
 
     case "PENDING_REVIEW":
@@ -125,12 +141,109 @@ function getStatusContent(
           "bg-amber-100 text-amber-700",
       };
 
+    case "APPROVED":
+      return {
+        title:
+          "Devolución aprobada",
+        description:
+          "Tu devolución ha sido aprobada. Sigue las instrucciones de envío cuando estén disponibles.",
+        symbol: "✓",
+        symbolClasses:
+          "bg-emerald-100 text-emerald-700",
+      };
+
+    case "WAITING_CUSTOMER":
+      return {
+        title:
+          "Esperando tu envío",
+        description:
+          "La devolución está preparada. Entrega el paquete siguiendo las instrucciones de transporte.",
+        symbol: "→",
+        symbolClasses:
+          "bg-blue-100 text-blue-700",
+      };
+
+    case "IN_TRANSIT":
+      return {
+        title:
+          "Devolución en tránsito",
+        description:
+          "Tu paquete está viajando hacia la tienda.",
+        symbol: "→",
+        symbolClasses:
+          "bg-blue-100 text-blue-700",
+      };
+
+    case "RECEIVED":
+      return {
+        title:
+          "Devolución recibida",
+        description:
+          "La tienda ya ha recibido tu paquete.",
+        symbol: "✓",
+        symbolClasses:
+          "bg-emerald-100 text-emerald-700",
+      };
+
+    case "INSPECTION":
+      return {
+        title:
+          "Producto en inspección",
+        description:
+          "La tienda está revisando los productos devueltos.",
+        symbol: "…",
+        symbolClasses:
+          "bg-amber-100 text-amber-700",
+      };
+
+    case "REFUNDED":
+      return {
+        title:
+          "Reembolso realizado",
+        description:
+          "La devolución ha sido procesada y el reembolso ha sido emitido.",
+        symbol: "✓",
+        symbolClasses:
+          "bg-emerald-100 text-emerald-700",
+      };
+
+    case "EXCHANGE_SENT":
+      return {
+        title: "Cambio enviado",
+        description:
+          "El producto de sustitución ya ha sido enviado.",
+        symbol: "✓",
+        symbolClasses:
+          "bg-emerald-100 text-emerald-700",
+      };
+
+    case "CLOSED":
+      return {
+        title: "Devolución finalizada",
+        description:
+          "El proceso de devolución ha finalizado.",
+        symbol: "✓",
+        symbolClasses:
+          "bg-emerald-100 text-emerald-700",
+      };
+
     case "REJECTED":
       return {
         title:
           "Devolución no aceptada",
         description:
-          "La solicitud no cumple actualmente las condiciones de devolución de la tienda.",
+          "La tienda ha rechazado esta solicitud de devolución.",
+        symbol: "×",
+        symbolClasses:
+          "bg-red-100 text-red-700",
+      };
+
+    case "CANCELLED":
+      return {
+        title:
+          "Devolución cancelada",
+        description:
+          "Esta solicitud de devolución ha sido cancelada.",
         symbol: "×",
         symbolClasses:
           "bg-red-100 text-red-700",
@@ -139,10 +252,10 @@ function getStatusContent(
     default:
       return {
         title:
-          "Solicitud enviada",
+          "Estado de la devolución",
         description:
-          "Hemos recibido correctamente tu solicitud de devolución.",
-        symbol: "✓",
+          "Consulta aquí el estado actualizado de tu devolución.",
+        symbol: "•",
         symbolClasses:
           "bg-zinc-100 text-zinc-700",
       };
@@ -358,10 +471,12 @@ export default async function ReturnSuccessPage({
 
                 <p>
                   Estado del envío:{" "}
-                  {
+                  {SHIPMENT_STATUS_LABELS[
                     caseData.shipment
                       .status
-                  }
+                  ] ??
+                    caseData.shipment
+                      .status}
                 </p>
               </div>
 
@@ -417,7 +532,10 @@ export default async function ReturnSuccessPage({
 
             <p className="mt-2 text-xs text-zinc-500">
               Estado:{" "}
-              {caseData.status}
+              {STATUS_LABELS[
+                caseData.status
+              ] ??
+                caseData.status}
             </p>
           </div>
 
