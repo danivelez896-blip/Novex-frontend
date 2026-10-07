@@ -150,7 +150,7 @@ export default async function ReturnRulesPage() {
         </p>
       </div>
 
-      <div className="mb-6 grid gap-4 md:grid-cols-3">
+      <div className="mb-6 grid gap-4 md:grid-cols-2">
         <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
           <p className="text-sm text-zinc-500">
             Regla general
@@ -173,18 +173,6 @@ export default async function ReturnRulesPage() {
           </p>
         </div>
 
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
-          <p className="text-sm text-zinc-500">
-            Aprobación
-          </p>
-          <p className="mt-2 text-lg font-medium">
-            {rule
-              ? rule.autoApprove
-                ? "Automática"
-                : "Manual"
-              : "Automática por defecto"}
-          </p>
-        </div>
       </div>
 
       <ReturnRulesEditor

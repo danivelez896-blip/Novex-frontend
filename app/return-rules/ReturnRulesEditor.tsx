@@ -84,6 +84,15 @@ export default function ReturnRulesEditor({
           }
         : DEFAULT_DRAFT
     );
+  const [
+    returnDaysInput,
+    setReturnDaysInput,
+  ] = useState(
+    String(
+      rule?.returnDays ??
+        DEFAULT_DRAFT.returnDays
+    )
+  );
   const [saving, setSaving] =
     useState(false);
   const [message, setMessage] =
@@ -122,14 +131,37 @@ export default function ReturnRulesEditor({
     setMessage(null);
     setError(null);
 
+    const parsedReturnDays =
+      Number(returnDaysInput);
+
+    if (
+      !Number.isInteger(
+        parsedReturnDays
+      ) ||
+      parsedReturnDays < 1 ||
+      parsedReturnDays > 365
+    ) {
+      setError(
+        "El plazo debe ser un número entero entre 1 y 365 días."
+      );
+      setSaving(false);
+      return;
+    }
+
+    const normalizedDraft = {
+      ...draft,
+      returnDays:
+        parsedReturnDays,
+    };
+
     const url = rule
       ? `/api/return-rules/${rule.id}`
       : "/api/return-rules";
 
     const body = rule
-      ? draft
+      ? normalizedDraft
       : {
-          ...draft,
+          ...normalizedDraft,
           companyId,
           storeId,
         };
@@ -271,12 +303,6 @@ export default function ReturnRulesEditor({
         "Exige imágenes durante la solicitud.",
     },
     {
-      key: "autoApprove",
-      label: "Aprobación automática",
-      description:
-        approvalText,
-    },
-    {
       key: "isActive",
       label: "Regla activa",
       description:
@@ -299,31 +325,105 @@ export default function ReturnRulesEditor({
           </p>
           <div className="mt-3 flex max-w-xs items-center gap-3">
             <input
-              type="number"
-              min={1}
-              max={365}
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
               disabled={!canEdit}
-              value={
-                draft.returnDays
-              }
-              onChange={(event) =>
-                setDraft(
-                  (current) => ({
-                    ...current,
-                    returnDays:
-                      Number(
-                        event.target
-                          .value
-                      ),
-                  })
-                )
-              }
+              value={returnDaysInput}
+              onChange={(event) => {
+                const value =
+                  event.target.value;
+
+                if (
+                  value === "" ||
+                  /^\d{0,3}$/.test(
+                    value
+                  )
+                ) {
+                  setReturnDaysInput(
+                    value
+                  );
+                }
+              }}
+              onBlur={() => {
+                if (
+                  returnDaysInput ===
+                  ""
+                ) {
+                  setReturnDaysInput(
+                    String(
+                      draft.returnDays
+                    )
+                  );
+                }
+              }}
               className="w-28 rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm outline-none disabled:opacity-60"
             />
             <span className="text-sm text-zinc-400">
               días
             </span>
           </div>
+        </div>
+
+        <div className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950 p-5">
+          <p className="text-sm font-medium">
+            Modo de aprobación
+          </p>
+          <p className="mt-1 text-xs leading-5 text-zinc-500">
+            Decide qué ocurre cuando una solicitud cumple las reglas configuradas.
+          </p>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <button
+              type="button"
+              disabled={!canEdit}
+              onClick={() =>
+                setBoolean(
+                  "autoApprove",
+                  true
+                )
+              }
+              className={`rounded-xl border px-4 py-4 text-left transition disabled:opacity-60 ${
+                draft.autoApprove
+                  ? "border-emerald-500 bg-emerald-500/10"
+                  : "border-zinc-800 bg-zinc-900"
+              }`}
+            >
+              <p className="text-sm font-medium">
+                Aprobación automática
+              </p>
+              <p className="mt-1 text-xs leading-5 text-zinc-500">
+                Si cumple las reglas, la devolución se aprueba automáticamente.
+              </p>
+            </button>
+
+            <button
+              type="button"
+              disabled={!canEdit}
+              onClick={() =>
+                setBoolean(
+                  "autoApprove",
+                  false
+                )
+              }
+              className={`rounded-xl border px-4 py-4 text-left transition disabled:opacity-60 ${
+                !draft.autoApprove
+                  ? "border-amber-500 bg-amber-500/10"
+                  : "border-zinc-800 bg-zinc-900"
+              }`}
+            >
+              <p className="text-sm font-medium">
+                Revisión manual
+              </p>
+              <p className="mt-1 text-xs leading-5 text-zinc-500">
+                La solicitud queda pendiente hasta que la tienda la apruebe o rechace.
+              </p>
+            </button>
+          </div>
+
+          <p className="mt-3 text-xs text-zinc-500">
+            {approvalText}
+          </p>
         </div>
 
         <div className="mt-6 grid gap-3 lg:grid-cols-2">
