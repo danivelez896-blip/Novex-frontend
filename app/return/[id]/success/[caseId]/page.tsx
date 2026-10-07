@@ -8,9 +8,28 @@ type CaseDetail = {
   publicId: string;
   status: string;
   requestedAt: string;
+  closedAt: string | null;
   store: {
     name: string;
   };
+  order: {
+    publicId: string;
+    orderNumber: string;
+  };
+  events: {
+    eventType: string;
+    createdAt: string;
+  }[];
+  shipment: {
+    carrier: string | null;
+    shippingProvider: string | null;
+    trackingNumber: string | null;
+    status: string;
+    labelUrl: string | null;
+    qrCodeUrl: string | null;
+    shippedAt: string | null;
+    deliveredAt: string | null;
+  } | null;
 };
 
 async function getCase(
@@ -30,6 +49,54 @@ async function getCase(
   }
 
   return response.json();
+}
+
+const STATUS_LABELS: Record<
+  string,
+  string
+> = {
+  REQUESTED: "Solicitud enviada",
+  PENDING_REVIEW:
+    "Pendiente de revisión",
+  APPROVED: "Aprobada",
+  WAITING_CUSTOMER:
+    "Esperando tu envío",
+  IN_TRANSIT: "En tránsito",
+  RECEIVED:
+    "Recibida por la tienda",
+  INSPECTION:
+    "En inspección",
+  REFUNDED:
+    "Reembolso realizado",
+  EXCHANGE_SENT:
+    "Cambio enviado",
+  CLOSED: "Finalizada",
+  REJECTED: "No aceptada",
+  CANCELLED: "Cancelada",
+};
+
+const STATUS_ORDER = [
+  "REQUESTED",
+  "APPROVED",
+  "WAITING_CUSTOMER",
+  "IN_TRANSIT",
+  "RECEIVED",
+  "INSPECTION",
+  "REFUNDED",
+];
+
+function formatDate(
+  value: string
+) {
+  return new Date(
+    value
+  ).toLocaleString(
+    "es-ES",
+    {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }
+  );
 }
 
 function getStatusContent(
@@ -100,6 +167,40 @@ export default async function ReturnSuccessPage({
       caseData.status
     );
 
+  const eventByStatus =
+    new Map<string, string>();
+
+  for (const event of
+    caseData.events) {
+    const mappedStatus =
+      event.eventType ===
+      "RETURN_REQUESTED"
+        ? "REQUESTED"
+        : event.eventType ===
+            "AUTO_APPROVED"
+          ? "APPROVED"
+          : event.eventType;
+
+    if (
+      STATUS_ORDER.includes(
+        mappedStatus
+      ) &&
+      !eventByStatus.has(
+        mappedStatus
+      )
+    ) {
+      eventByStatus.set(
+        mappedStatus,
+        event.createdAt
+      );
+    }
+  }
+
+  const currentIndex =
+    STATUS_ORDER.indexOf(
+      caseData.status
+    );
+
   return (
     <main className="min-h-screen bg-zinc-100 px-6 py-10 text-zinc-900">
       <div className="mx-auto max-w-xl">
@@ -121,6 +222,189 @@ export default async function ReturnSuccessPage({
           <p className="mt-3 text-sm text-zinc-600">
             {status.description}
           </p>
+
+          <div className="mt-8 text-left">
+            <p className="text-sm font-medium text-zinc-900">
+              Seguimiento de la devolución
+            </p>
+
+            <div className="mt-4 space-y-4">
+              {caseData.status ===
+                "PENDING_REVIEW" && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+                  <p className="text-sm font-medium text-amber-800">
+                    Pendiente de revisión
+                  </p>
+                  <p className="mt-1 text-xs text-amber-700">
+                    La tienda debe revisar tu solicitud antes de continuar.
+                  </p>
+                </div>
+              )}
+
+              {[
+                ...STATUS_ORDER,
+              ].map(
+                (
+                  step,
+                  index
+                ) => {
+                  const completed =
+                    currentIndex >=
+                      index ||
+                    eventByStatus.has(
+                      step
+                    );
+
+                  return (
+                    <div
+                      key={step}
+                      className="flex gap-3"
+                    >
+                      <div className="flex flex-col items-center">
+                        <div
+                          className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold ${
+                            completed
+                              ? "bg-emerald-600 text-white"
+                              : "bg-zinc-200 text-zinc-500"
+                          }`}
+                        >
+                          {completed
+                            ? "✓"
+                            : index +
+                              1}
+                        </div>
+
+                        {index <
+                          STATUS_ORDER.length -
+                            1 && (
+                          <div className="mt-1 h-7 w-px bg-zinc-200" />
+                        )}
+                      </div>
+
+                      <div className="pb-1">
+                        <p
+                          className={`text-sm font-medium ${
+                            completed
+                              ? "text-zinc-900"
+                              : "text-zinc-400"
+                          }`}
+                        >
+                          {STATUS_LABELS[
+                            step
+                          ]}
+                        </p>
+
+                        {eventByStatus.get(
+                          step
+                        ) && (
+                          <p className="mt-0.5 text-xs text-zinc-500">
+                            {formatDate(
+                              eventByStatus.get(
+                                step
+                              )!
+                            )}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                }
+              )}
+
+              {(caseData.status ===
+                "REJECTED" ||
+                caseData.status ===
+                  "CANCELLED") && (
+                <div className="rounded-xl border border-red-200 bg-red-50 p-4">
+                  <p className="text-sm font-medium text-red-700">
+                    {STATUS_LABELS[
+                      caseData.status
+                    ]}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {caseData.shipment && (
+            <div className="mt-8 rounded-xl border border-zinc-200 p-5 text-left">
+              <p className="text-sm font-medium text-zinc-900">
+                Envío de devolución
+              </p>
+
+              <div className="mt-3 space-y-2 text-sm text-zinc-600">
+                <p>
+                  Transportista:{" "}
+                  {caseData.shipment
+                    .carrier ??
+                    caseData.shipment
+                      .shippingProvider ??
+                    "Pendiente"}
+                </p>
+
+                {caseData.shipment
+                  .trackingNumber && (
+                  <p>
+                    Seguimiento:{" "}
+                    <span className="font-medium text-zinc-900">
+                      {
+                        caseData
+                          .shipment
+                          .trackingNumber
+                      }
+                    </span>
+                  </p>
+                )}
+
+                <p>
+                  Estado del envío:{" "}
+                  {
+                    caseData.shipment
+                      .status
+                  }
+                </p>
+              </div>
+
+              {(caseData.shipment
+                .labelUrl ||
+                caseData.shipment
+                  .qrCodeUrl) && (
+                <div className="mt-4 flex flex-wrap gap-3">
+                  {caseData.shipment
+                    .labelUrl && (
+                    <a
+                      href={
+                        caseData
+                          .shipment
+                          .labelUrl
+                      }
+                      target="_blank"
+                      rel="noreferrer"
+                      className="rounded-xl bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white"
+                    >
+                      Abrir etiqueta
+                    </a>
+                  )}
+
+                  {caseData.shipment
+                    .qrCodeUrl && (
+                    <a
+                      href={
+                        caseData
+                          .shipment
+                          .qrCodeUrl
+                      }
+                      target="_blank"
+                      rel="noreferrer"
+                      className="rounded-xl border border-zinc-300 px-4 py-2.5 text-sm font-medium"
+                    >
+                      Abrir QR
+                    </a>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="mt-6 rounded-xl bg-zinc-100 p-4">
             <p className="text-sm text-zinc-500">
