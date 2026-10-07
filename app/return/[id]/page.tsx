@@ -14,7 +14,6 @@ type PortalResponse = {
     customer?: {
       firstName: string | null;
       lastName: string | null;
-      email: string | null;
     } | null;
     store: {
       id: number;
@@ -37,15 +36,9 @@ type PortalResponse = {
   rule: {
     returnDays: number;
     allowReturns: boolean;
-    allowRefund: boolean;
-    allowSizeExchange: boolean;
-    allowColorExchange: boolean;
-    allowProductExchange: boolean;
     requirePhotos: boolean;
-    autoApprove: boolean;
     rejectionMessage: string | null;
     customerConditions: string[];
-    isActive: boolean;
     returnDeadline: string;
     withinReturnPeriod: boolean;
   } | null;
@@ -225,8 +218,6 @@ export default async function ReturnPortalPage({
                     rule.requirePhotos,
                   allowReturns:
                     rule.allowReturns,
-                  isActive:
-                    rule.isActive,
                   withinReturnPeriod:
                     rule.withinReturnPeriod,
                 }
