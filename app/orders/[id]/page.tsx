@@ -2,6 +2,8 @@ import ReturnRequestButton from "./ReturnRequestButton";
 
 import Link from "next/link";
 
+import { novexFetch } from "@/lib/novex-server";
+
 type OrderDetail = {
   id: number;
   orderNumber: string;
@@ -36,11 +38,8 @@ type OrderDetail = {
 };
 
 async function getOrder(id: string): Promise<OrderDetail> {
-  const response = await fetch(
-    `https://novex-production-f614.up.railway.app/api/orders/${id}`,
-    {
-      cache: "no-store",
-    }
+  const response = await novexFetch(
+    `/orders/${id}`
   );
 
   if (!response.ok) {
