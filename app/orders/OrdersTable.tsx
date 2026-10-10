@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 type Order = {
@@ -25,12 +26,64 @@ type Period = "ALL" | "30" | "90";
 
 export default function OrdersTable({
   orders,
+  activeStoreId,
 }: {
   orders: Order[];
+  activeStoreId: number | null;
 }) {
+  const router = useRouter();
   const [query, setQuery] = useState("");
   const [period, setPeriod] =
     useState<Period>("ALL");
+  const [syncing, setSyncing] =
+    useState(false);
+  const [syncMessage, setSyncMessage] =
+    useState<string | null>(null);
+
+  async function syncShopifyOrders() {
+    if (!activeStoreId || syncing) {
+      return;
+    }
+
+    setSyncing(true);
+    setSyncMessage(null);
+
+    try {
+      const response = await fetch(
+        `/api/orders/shopify/${activeStoreId}/sync`,
+        {
+          method: "POST",
+        }
+      );
+
+      const data =
+        (await response.json()) as {
+          message?: string;
+          foundInShopify?: number;
+          syncedOrders?: number;
+        };
+
+      if (!response.ok) {
+        setSyncMessage(
+          data.message ??
+            "No se pudieron sincronizar los pedidos."
+        );
+        return;
+      }
+
+      setSyncMessage(
+        `Sincronización completada: ${data.syncedOrders ?? 0} pedidos actualizados.`
+      );
+
+      router.refresh();
+    } catch {
+      setSyncMessage(
+        "No se pudo conectar con Shopify."
+      );
+    } finally {
+      setSyncing(false);
+    }
+  }
 
   const filteredOrders = useMemo(() => {
     const normalized =
@@ -76,6 +129,32 @@ export default function OrdersTable({
 
   return (
     <div className="space-y-4">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <button
+            type="button"
+            onClick={() =>
+              void syncShopifyOrders()
+            }
+            disabled={
+              !activeStoreId ||
+              syncing
+            }
+            className="inline-flex items-center rounded-xl border border-zinc-700 bg-white px-4 py-2.5 text-sm font-medium text-zinc-950 transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {syncing
+              ? "Sincronizando..."
+              : "Sincronizar Shopify"}
+          </button>
+
+          {syncMessage && (
+            <p className="mt-2 text-xs text-zinc-400">
+              {syncMessage}
+            </p>
+          )}
+        </div>
+      </div>
+
       <div className="grid gap-3 md:grid-cols-[1fr_220px_auto]">
         <input
           type="search"
