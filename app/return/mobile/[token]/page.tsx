@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   use,
   useEffect,
@@ -26,6 +27,7 @@ export default function ReturnMobilePage({
   }>;
 }) {
   const { token } = use(params);
+  const router = useRouter();
 
   const [
     draft,
@@ -69,9 +71,19 @@ export default function ReturnMobilePage({
     if (
       data.status === "CONSUMED"
     ) {
+      if (
+        data.casePublicId &&
+        data.orderPublicId
+      ) {
+        router.replace(
+          `/return/${data.orderPublicId}/success/${data.casePublicId}`
+        );
+        return;
+      }
+
       setDraft(null);
       setMessage(
-        "Esta devolución ya se completó. El enlace del móvil ya no puede reutilizarse."
+        "Esta devolución ya se completó correctamente."
       );
       return;
     }
@@ -96,6 +108,22 @@ export default function ReturnMobilePage({
 
     void load();
   }, [token]);
+
+  useEffect(() => {
+    const interval = window.setInterval(
+      () => {
+        void refreshDraft().catch(() => {
+          // Si hay un fallo puntual de red, mantenemos la pantalla actual.
+        });
+      },
+      2000
+    );
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [token]);
+
 
   async function upload(
     event: React.ChangeEvent<HTMLInputElement>
