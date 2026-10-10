@@ -131,6 +131,7 @@ export default async function OrdersPage() {
 
       <OrdersTable
         orders={visibleOrders}
+        activeStoreId={activeStoreId}
       />
     </div>
   );
