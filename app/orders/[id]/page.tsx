@@ -1,4 +1,5 @@
 import ReturnRequestButton from "./ReturnRequestButton";
+import ExchangeRequestButton from "./ExchangeRequestButton";
 
 import Link from "next/link";
 
@@ -204,6 +205,14 @@ export default async function OrderPage({
     customerId={order.customer?.id ?? null}
     orderItemId={item.id}
   />
+  {process.env.NEXT_PUBLIC_ENABLE_EXCHANGE_TEST_UI === "true" && (
+    <ExchangeRequestButton
+      orderId={order.id}
+      storeId={order.store?.id ?? 0}
+      customerId={order.customer?.id ?? null}
+      orderItemId={item.id}
+    />
+  )}
 )}
               </div>
             ))}
