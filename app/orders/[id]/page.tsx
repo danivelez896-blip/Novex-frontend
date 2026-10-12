@@ -199,21 +199,23 @@ export default async function OrderPage({
                   </div>
                 )}
                 {item.isReturnable && (
-  <ReturnRequestButton
-    orderId={order.id}
-    storeId={order.store?.id ?? 0}
-    customerId={order.customer?.id ?? null}
-    orderItemId={item.id}
-  />
-  {process.env.NEXT_PUBLIC_ENABLE_EXCHANGE_TEST_UI === "true" && (
-    <ExchangeRequestButton
-      orderId={order.id}
-      storeId={order.store?.id ?? 0}
-      customerId={order.customer?.id ?? null}
-      orderItemId={item.id}
-    />
-  )}
-)}
+                  <>
+                    <ReturnRequestButton
+                      orderId={order.id}
+                      storeId={order.store?.id ?? 0}
+                      customerId={order.customer?.id ?? null}
+                      orderItemId={item.id}
+                    />
+                    {process.env.NEXT_PUBLIC_ENABLE_EXCHANGE_TEST_UI === "true" && (
+                      <ExchangeRequestButton
+                        orderId={order.id}
+                        storeId={order.store?.id ?? 0}
+                        customerId={order.customer?.id ?? null}
+                        orderItemId={item.id}
+                      />
+                    )}
+                  </>
+                )}
               </div>
             ))}
           </div>
