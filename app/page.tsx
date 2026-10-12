@@ -35,7 +35,7 @@ async function getCases(): Promise<Case[]> {
   );
 
   if (!response.ok) {
-    throw new Error("No se pudieron cargar las devoluciones");
+    throw new Error(`No se pudieron cargar las devoluciones (HTTP ${response.status}, API: ${process.env.NOVEX_API_URL ?? "no configurada"})`);
   }
 
   return response.json();
@@ -69,7 +69,7 @@ async function getStores(): Promise<Store[]> {
 
   if (!response.ok) {
     throw new Error(
-      "No se pudieron cargar las tiendas"
+      `No se pudieron cargar las tiendas (HTTP ${response.status}, API: ${process.env.NOVEX_API_URL ?? "no configurada"})`
     );
   }
 
