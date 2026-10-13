@@ -1,5 +1,6 @@
 import StagingShopifyConnect from "./StagingShopifyConnect";
 import StagingSendcloudConnect from "./StagingSendcloudConnect";
+import SendcloudContracts from "./SendcloudContracts";
 import {
   getActiveStoreId,
   novexFetch,
@@ -460,6 +461,9 @@ export default async function SettingsPage() {
               description="Envíos de devolución, etiquetas y tracking"
               integration={sendcloud}
             />
+            {process.env.NOVEX_ENABLE_STAGING_SENDCLOUD_CONNECT === "true" && store?.id && sendcloud?.status === "CONNECTED" && (
+              <div className="lg:col-span-2"><SendcloudContracts storeId={store.id} /></div>
+            )}
             {process.env.NOVEX_ENABLE_STAGING_SENDCLOUD_CONNECT === "true" && store?.id && sendcloud?.status !== "CONNECTED" && (
               <div className="lg:col-span-2"><StagingSendcloudConnect storeId={store.id} /></div>
             )}
