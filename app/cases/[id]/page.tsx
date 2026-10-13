@@ -297,6 +297,7 @@ export default async function CasePage({
     </div>
   </section>
 )}
+{caseData.type !== "EXCHANGE" && (
 <RefundActions
   caseId={caseData.id}
   caseStatus={caseData.status}
@@ -304,6 +305,7 @@ export default async function CasePage({
   currency={caseData.order?.currency ?? "EUR"}
   refunds={caseData.refunds}
 />
+)}
 <ShipmentActions
   caseId={caseData.id}
   caseStatus={caseData.status}
