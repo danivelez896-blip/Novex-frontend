@@ -2,7 +2,15 @@
 
 import { useState } from "react";
 
-type Contract = { id?: number | string; name?: string; carrier?: string; is_active?: boolean };
+type Contract = { id?: number | string; name?: string; carrier?: string | { code?: string; name?: string }; is_active?: boolean };
+function contractName(contract: Contract): string {
+  if (typeof contract.name === "string" && contract.name.trim()) return contract.name;
+  if (typeof contract.carrier === "string") return contract.carrier;
+  if (contract.carrier && typeof contract.carrier === "object") {
+    return contract.carrier.name || contract.carrier.code || "Contrato";
+  }
+  return "Contrato";
+}
 export default function SendcloudContracts({ storeId }: { storeId: number }) {
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [message, setMessage] = useState("");
@@ -39,7 +47,7 @@ export default function SendcloudContracts({ storeId }: { storeId: number }) {
       {contracts.length > 0 && <div className="mt-4 space-y-2">
         {contracts.map((contract, index) => <div key={String(contract.id ?? index)}
           className="rounded-lg border border-zinc-800 p-3 text-sm">
-          <p>{contract.name || contract.carrier || "Contrato"} · ID {String(contract.id ?? "no disponible")}</p>
+          <p>{contractName(contract)} · ID {String(contract.id ?? "no disponible")}</p>
         </div>)}
         <p className="text-xs text-amber-300">Aún no se ha elegido ni guardado un método de devolución. Validaremos destino, peso y opciones de envío antes de habilitarlo.</p>
       </div>}
