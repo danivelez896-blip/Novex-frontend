@@ -212,6 +212,7 @@ export default async function OrderPage({
                         storeId={order.store?.id ?? 0}
                         customerId={order.customer?.id ?? null}
                         orderItemId={item.id}
+                        maxQuantity={item.quantity}
                       />
                     )}
                   </>
