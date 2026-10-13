@@ -3,6 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+type Variant = { id: string; title: string; price: string; availableForSale: boolean; options: { name: string; value: string }[] };
+type VariantResponse = { originalVariantId: string; variants: Variant[] };
+
 type Props = {
   orderId: number;
   storeId: number;
@@ -21,8 +24,36 @@ export default function ExchangeRequestButton({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [confirmed, setConfirmed] = useState(false);
+  const [variants, setVariants] = useState<Variant[]>([]);
+  const [loadingOptions, setLoadingOptions] = useState(false);
+  const [originalVariantId, setOriginalVariantId] = useState("");
+  const [optionsReady, setOptionsReady] = useState(false);
+
+  async function loadOptions() {
+    setOpen(true);
+    if (optionsReady || loadingOptions) return;
+    setLoadingOptions(true);
+    setError("");
+    try {
+      const response = await fetch(`/api/exchanges/order-items/${orderItemId}/variants`);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.message || "No se pudieron cargar las variantes");
+      const result = data as VariantResponse;
+      setOriginalVariantId(result.originalVariantId);
+      setVariants(result.variants);
+      setOptionsReady(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error cargando variantes");
+    } finally {
+      setLoadingOptions(false);
+    }
+  }
 
   async function submit() {
+    if (!optionsReady || !variants.some(v => v.id === variantId && v.availableForSale && v.id !== originalVariantId)) {
+      setError("Selecciona una variante disponible distinta de la original.");
+      return;
+    }
     if (!confirmed) {
       setError("Confirma que has revisado la variante solicitada.");
       return;
@@ -65,7 +96,7 @@ export default function ExchangeRequestButton({
     <div className="mt-3">
       <button
         type="button"
-        onClick={() => setOpen(!open)}
+        onClick={() => { if (open) setOpen(false); else void loadOptions(); }}
         className="rounded-xl border border-zinc-600 px-5 py-3 text-sm text-white hover:border-zinc-400"
       >
         {open ? "Cancelar cambio" : "Solicitar cambio (prueba)"}
@@ -85,18 +116,32 @@ export default function ExchangeRequestButton({
             </select>
           </label>
           <label className="block text-sm">
-            ID de la nueva variante en Shopify
-            <input className="mt-1 block w-full rounded-lg bg-zinc-800 p-2"
-              value={variantId} onChange={(e) => setVariantId(e.target.value)}
-              placeholder="gid://shopify/ProductVariant/123456789" />
+            Nueva variante
+            <select
+              value={variantId}
+              onChange={(e) => { setVariantId(e.target.value); setConfirmed(false); }}
+              disabled={!optionsReady || loadingOptions}
+              className="mt-1 block w-full rounded-lg bg-zinc-800 p-2"
+            >
+              <option value="">{loadingOptions ? "Cargando variantes…" : "Selecciona talla y color"}</option>
+              {variants.filter(v => v.id !== originalVariantId).map(v => (
+                <option key={v.id} value={v.id} disabled={!v.availableForSale}>
+                  {v.options.map(o => `${o.name}: ${o.value}`).join(" / ") || v.title}
+                  {" · "}{v.price} €{!v.availableForSale ? " · No disponible" : ""}
+                </option>
+              ))}
+            </select>
           </label>
+          {optionsReady && variants.length <= 1 && (
+            <p className="text-sm text-amber-300">No hay otras variantes disponibles para este artículo.</p>
+          )}
           <div className="rounded-lg border border-zinc-700 bg-zinc-950 p-3 text-sm">
             <p className="font-medium">Resumen de la solicitud</p>
             <p className="mt-1 text-zinc-400">
               Cambio de {kind === "EXCHANGE_SIZE" ? "talla" : "color"} · 1 unidad
             </p>
             <p className="mt-1 break-all text-xs text-zinc-500">
-              Variante destino: {variantId.trim() || "Sin seleccionar"}
+              Variante destino: {variants.find(v => v.id === variantId)?.title || "Sin seleccionar"}
             </p>
             <p className="mt-2 text-xs text-amber-300">
               La variante todavía se validará en el backend contra Shopify.
