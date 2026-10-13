@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { isValidExchangeDestination, formatExchangeVariant } from "@/lib/exchange-variants";
 
 type Variant = { id: string; title: string; price: string; availableForSale: boolean; options: { name: string; value: string }[] };
 type VariantResponse = { originalVariantId: string; variants: Variant[] };
@@ -56,7 +57,7 @@ export default function ExchangeRequestButton({
       setError("La cantidad solicitada no es válida.");
       return;
     }
-    if (!optionsReady || !variants.some(v => v.id === variantId && v.availableForSale && v.id !== originalVariantId)) {
+    if (!optionsReady || !isValidExchangeDestination(variants.find(v => v.id === variantId), originalVariantId)) {
       setError("Selecciona una variante disponible distinta de la original.");
       return;
     }
@@ -132,7 +133,7 @@ export default function ExchangeRequestButton({
               <option value="">{loadingOptions ? "Cargando variantes…" : "Selecciona talla y color"}</option>
               {variants.filter(v => v.id !== originalVariantId).map(v => (
                 <option key={v.id} value={v.id} disabled={!v.availableForSale}>
-                  {v.options.map(o => `${o.name}: ${o.value}`).join(" / ") || v.title}
+                  {formatExchangeVariant(v)}
                   {" · "}{v.price} €{!v.availableForSale ? " · No disponible" : ""}
                 </option>
               ))}
