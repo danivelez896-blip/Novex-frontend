@@ -110,7 +110,7 @@ export default function ExchangeRequestButton({
           <label className="block text-sm">
             Tipo de cambio
             <select className="mt-1 block w-full rounded-lg bg-zinc-800 p-2"
-              value={kind} onChange={(e) => setKind(e.target.value as typeof kind)}>
+              value={kind} onChange={(e) => { setKind(e.target.value as typeof kind); setVariantId(""); setConfirmed(false); }}>
               <option value="EXCHANGE_SIZE">Talla</option>
               <option value="EXCHANGE_COLOR">Color</option>
             </select>
