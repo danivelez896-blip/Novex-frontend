@@ -450,7 +450,7 @@ export default async function SettingsPage() {
               description="Pedidos, productos, clientes y reembolsos"
               integration={shopify}
             />
-            {process.env.NOVEX_ENABLE_STAGING_SHOPIFY_CONNECT === "true" && store?.id && shopify?.status !== "CONNECTED" && (
+            {process.env.NOVEX_ENABLE_STAGING_SHOPIFY_CONNECT === "true" && store?.id && (
               <div className="lg:col-span-2"><StagingShopifyConnect storeId={store.id} /></div>
             )}
 
