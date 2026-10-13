@@ -2,9 +2,11 @@ import { novexFetch } from "@/lib/novex-server";
 import ShipmentActions from "./ShipmentActions";
 import RefundActions from "./RefundActions";
 import CaseActions from "./CaseActions";
+import ExchangeReview from "./ExchangeReview";
 
 type CaseDetail = {
   id: number;
+  type: string;
   status: string;
   requestedAt: string;
   closedAt?: string | null;
@@ -126,6 +128,8 @@ export default async function CasePage({
     currentStatus={caseData.status}
   />
 </div>
+
+        {caseData.type === "EXCHANGE" && <ExchangeReview caseId={caseData.id} />}
 
         <div className="grid gap-6 lg:grid-cols-2">
           <section className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
