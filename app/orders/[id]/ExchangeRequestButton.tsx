@@ -11,11 +11,12 @@ type Props = {
   storeId: number;
   customerId: number | null;
   orderItemId: number;
+  maxQuantity: number;
 };
 
 // Herramienta de prueba interna; hasta tener selector de variantes no se expone al público.
 export default function ExchangeRequestButton({
-  orderId, storeId, customerId, orderItemId,
+  orderId, storeId, customerId, orderItemId, maxQuantity,
 }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -24,6 +25,7 @@ export default function ExchangeRequestButton({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [confirmed, setConfirmed] = useState(false);
+  const [quantity, setQuantity] = useState(1);
   const [variants, setVariants] = useState<Variant[]>([]);
   const [loadingOptions, setLoadingOptions] = useState(false);
   const [originalVariantId, setOriginalVariantId] = useState("");
@@ -50,6 +52,10 @@ export default function ExchangeRequestButton({
   }
 
   async function submit() {
+    if (!Number.isSafeInteger(quantity) || quantity < 1 || quantity > maxQuantity) {
+      setError("La cantidad solicitada no es válida.");
+      return;
+    }
     if (!optionsReady || !variants.some(v => v.id === variantId && v.availableForSale && v.id !== originalVariantId)) {
       setError("Selecciona una variante disponible distinta de la original.");
       return;
@@ -72,7 +78,7 @@ export default function ExchangeRequestButton({
           storeId, orderId, customerId: customerId ?? undefined,
           type: "EXCHANGE", resolutionType: kind,
           items: [{
-            orderItemId, quantity: 1, reason: "Cambio solicitado",
+            orderItemId, quantity, reason: "Cambio solicitado",
             requestedVariant: variantId.trim(),
           }],
         }),
@@ -135,10 +141,16 @@ export default function ExchangeRequestButton({
           {optionsReady && variants.length <= 1 && (
             <p className="text-sm text-amber-300">No hay otras variantes disponibles para este artículo.</p>
           )}
+          <label className="block text-sm">
+            Unidades que quieres cambiar
+            <input type="number" min={1} max={maxQuantity} step={1}
+              value={quantity} onChange={(e) => { setQuantity(Number(e.target.value)); setConfirmed(false); }}
+              className="mt-1 block w-full rounded-lg bg-zinc-800 p-2" />
+          </label>
           <div className="rounded-lg border border-zinc-700 bg-zinc-950 p-3 text-sm">
             <p className="font-medium">Resumen de la solicitud</p>
             <p className="mt-1 text-zinc-400">
-              Cambio de {kind === "EXCHANGE_SIZE" ? "talla" : "color"} · 1 unidad
+              Cambio de {kind === "EXCHANGE_SIZE" ? "talla" : "color"} · {quantity} {quantity === 1 ? "unidad" : "unidades"}
             </p>
             <p className="mt-1 break-all text-xs text-zinc-500">
               Variante destino: {variants.find(v => v.id === variantId)?.title || "Sin seleccionar"}
