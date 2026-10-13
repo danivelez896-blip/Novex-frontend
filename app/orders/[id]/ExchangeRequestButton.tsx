@@ -20,8 +20,13 @@ export default function ExchangeRequestButton({
   const [kind, setKind] = useState<"EXCHANGE_SIZE" | "EXCHANGE_COLOR">("EXCHANGE_SIZE");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [confirmed, setConfirmed] = useState(false);
 
   async function submit() {
+    if (!confirmed) {
+      setError("Confirma que has revisado la variante solicitada.");
+      return;
+    }
     if (!/^gid:\/\/shopify\/ProductVariant\/\d+$/.test(variantId.trim())) {
       setError("Introduce el identificador de variante Shopify válido.");
       return;
@@ -85,7 +90,25 @@ export default function ExchangeRequestButton({
               value={variantId} onChange={(e) => setVariantId(e.target.value)}
               placeholder="gid://shopify/ProductVariant/123456789" />
           </label>
-          <button type="button" disabled={loading} onClick={submit}
+          <div className="rounded-lg border border-zinc-700 bg-zinc-950 p-3 text-sm">
+            <p className="font-medium">Resumen de la solicitud</p>
+            <p className="mt-1 text-zinc-400">
+              Cambio de {kind === "EXCHANGE_SIZE" ? "talla" : "color"} · 1 unidad
+            </p>
+            <p className="mt-1 break-all text-xs text-zinc-500">
+              Variante destino: {variantId.trim() || "Sin seleccionar"}
+            </p>
+            <p className="mt-2 text-xs text-amber-300">
+              La variante todavía se validará en el backend contra Shopify.
+              No se realizará ningún envío ni cobro desde este formulario.
+            </p>
+          </div>
+          <label className="flex items-start gap-2 text-sm text-zinc-300">
+            <input type="checkbox" checked={confirmed}
+              onChange={(e) => setConfirmed(e.target.checked)} />
+            He revisado los datos de esta solicitud de prueba.
+          </label>
+          <button type="button" disabled={loading || !confirmed || !variantId.trim()} onClick={submit}
             className="rounded-lg bg-white px-4 py-2 text-sm text-black disabled:opacity-50">
             {loading ? "Guardando..." : "Crear solicitud de prueba"}
           </button>
