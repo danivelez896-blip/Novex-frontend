@@ -56,6 +56,10 @@ export default function ExchangeReview({ caseId }: { caseId: number }) {
     };
     mutationExecuted: boolean;
   }>>(initial);
+  const [lab, setLab] = useState<State<{
+    isolated: boolean; externalCalls: number; databaseWrites: number;
+    results: { scenario: string; passed: boolean; blockedReason?: string; state: string }[];
+  }>>(initial);
   const [dryRun, setDryRun] = useState<State<{
     dryRun: boolean; mutationExecuted: boolean; executable: boolean;
     blockers: string[]; candidateInput: {
@@ -253,6 +257,22 @@ export default function ExchangeReview({ caseId }: { caseId: number }) {
           </ul>}
         </div>}
       </div>
+      <div className="mt-4 rounded-xl border border-emerald-700/50 p-4">
+        <h3 className="font-medium">Laboratorio aislado de cambios · Cero costes</h3>
+        <p className="mt-1 text-sm text-zinc-400">Ensaya seis situaciones, incluidos stock insuficiente, error económico y recepción duplicada. No altera el caso ni llama a Shopify o Sendcloud.</p>
+        <button type="button" disabled={lab.loading}
+          onClick={() => void load("lifecycle-lab", setLab)}
+          className="mt-3 rounded-lg border border-zinc-600 px-4 py-2 text-sm hover:bg-zinc-800 disabled:opacity-50">
+          {lab.loading ? "Comprobando…" : "Ejecutar pruebas ficticias"}
+        </button>
+        {lab.error && <p role="alert" className="mt-2 text-red-400">{lab.error}</p>}
+        {lab.value && <div className="mt-3 space-y-1 text-sm">
+          <p>Operaciones externas: {lab.value.externalCalls} · Escrituras en base de datos: {lab.value.databaseWrites}</p>
+          {lab.value.results.map((result) =>
+            <p key={result.scenario}>{result.scenario}: {result.passed ? "Correcto" : `Bloqueado como corresponde: ${result.blockedReason}`}</p>
+          )}
+        </div>}
+      </div>
       <div className="mt-4 rounded-xl border border-zinc-700 p-4">
         <h3 className="font-medium">Etapas de la devolución real · Solo lectura</h3>
         <p className="mt-1 text-sm text-zinc-400">Separa la apertura de la devolución en Shopify de su recepción física e inspección.</p>
@@ -266,7 +286,7 @@ export default function ExchangeReview({ caseId }: { caseId: number }) {
           <p>Requisitos de apertura Shopify: {stages.value.stages.shopifyReturnOpening.preflightPassed ? "Superados" : "Pendientes"}</p>
           <p>Recepción física verificada: {stages.value.stages.receiptAndInspection.physicalReceiptVerified ? "Sí" : "No"}</p>
           <p>Inspección iniciada: {stages.value.stages.receiptAndInspection.inspectionStarted ? "Sí" : "No"}</p>
-          <p className="text-amber-300">Operaciones de escritura: desactivadas. No se ha creado ninguna devolución.</p>
+          <p className="text-amber-300">Esta consulta no escribe datos. Las devoluciones reales ya abiertas se mantienen independientes.</p>
           <ul className="list-disc pl-5 text-zinc-400">
             {Object.entries(stages.value.stages.shopifyReturnOpening.checks).filter(([, ok]) => !ok)
               .map(([name]) => <li key={name}>Pendiente: {name}</li>)}
