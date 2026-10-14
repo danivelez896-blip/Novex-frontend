@@ -1,3 +1,4 @@
+import StagingReturnSimulation from "./StagingReturnSimulation";
 import { novexFetch } from "@/lib/novex-server";
 import ShipmentActions from "./ShipmentActions";
 import RefundActions from "./RefundActions";
@@ -133,6 +134,7 @@ export default async function CasePage({
 
         {caseData.type === "EXCHANGE" && <ExchangeReview caseId={caseData.id} />}
         {process.env.NOVEX_ENABLE_STAGING_SENDCLOUD_CONNECT === "true" && caseData.type === "EXCHANGE" && <ReturnPreflight caseId={caseData.id} />}
+        {process.env.NOVEX_ENABLE_STAGING_SENDCLOUD_CONNECT === "true" && caseData.type === "EXCHANGE" && <StagingReturnSimulation caseId={caseData.id} status={caseData.status} isSimulation={caseData.shipments.some((shipment) => shipment.carrier === "NOVEX_STAGING_SIMULATION")} />}
 
         <div className="grid gap-6 lg:grid-cols-2">
           <section className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
