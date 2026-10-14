@@ -18,6 +18,25 @@ export default function SendcloudContracts({ storeId }: { storeId: number }) {
   const [returnLoading, setReturnLoading] = useState(false);
   const [returnMethods, setReturnMethods] = useState<{ id: number | null; name: string; minWeight: unknown; maxWeight: unknown }[]>([]);
   const [returnMessage, setReturnMessage] = useState("");
+  const [optionCode, setOptionCode] = useState<string | null>(null);
+  const [optionMessage, setOptionMessage] = useState("");
+  const [optionLoading, setOptionLoading] = useState(false);
+  async function resolveOption() {
+    setOptionLoading(true);
+    setOptionMessage("");
+    setOptionCode(null);
+    try {
+      const response = await fetch(`/api/integrations/sendcloud/stores/${storeId}/compat/4215`, { cache: "no-store" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || "No se pudo consultar la equivalencia");
+      setOptionCode(typeof data.shippingOptionCode === "string" ? data.shippingOptionCode : null);
+      if (!data.shippingOptionCode) setOptionMessage("Sendcloud no devuelve equivalencia para el método 4215.");
+    } catch (error) {
+      setOptionMessage(error instanceof Error ? error.message : "Error consultando Sendcloud");
+    } finally {
+      setOptionLoading(false);
+    }
+  }
   async function loadReturnMethods() {
     setReturnLoading(true);
     setReturnMessage("");
@@ -61,6 +80,16 @@ export default function SendcloudContracts({ storeId }: { storeId: number }) {
         className="mt-3 rounded-lg border border-zinc-600 px-4 py-2 text-sm disabled:opacity-50">
         {loading ? "Consultando…" : "Consultar contratos activos"}
       </button>
+      <div className="mt-4 rounded-lg border border-zinc-800 p-3">
+        <p className="text-sm font-medium">Código API v3 · Correos Paq Retorno 0,25–0,5 kg</p>
+        <p className="mt-1 text-xs text-zinc-400">ID v2: 4215. Contrato de referencia: 8957. Consulta de equivalencia, no valida todavía su compatibilidad.</p>
+        <button type="button" disabled={optionLoading} onClick={() => void resolveOption()}
+          className="mt-3 rounded-lg border border-zinc-600 px-4 py-2 text-sm disabled:opacity-50">
+          {optionLoading ? "Consultando…" : "Obtener código API v3"}
+        </button>
+        {optionCode && <p className="mt-2 break-all text-sm text-emerald-400">shipping_option_code: {optionCode}</p>}
+        {optionMessage && <p role="status" className="mt-2 text-sm text-amber-300">{optionMessage}</p>}
+      </div>
       <div className="mt-4 border-t border-zinc-800 pt-4">
         <p className="text-sm font-medium">Métodos Correos de devolución (diagnóstico)</p>
         <p className="mt-1 text-xs text-zinc-400">
