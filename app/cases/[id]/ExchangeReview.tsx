@@ -26,6 +26,11 @@ const initial = { loading: false };
 export default function ExchangeReview({ caseId }: { caseId: number }) {
   const [preview, setPreview] = useState<State<Preview>>(initial);
   const [check, setCheck] = useState<State<Check>>(initial);
+  const [authorization, setAuthorization] = useState<State<{
+    openingPreflightPassed: boolean; finalExecutionAuthorized: boolean;
+    mutationExecuted: boolean; shopDomain: string; orderNumber: string;
+    candidateInput: { returnLineItems: unknown[]; exchangeLineItems: unknown[] } | null;
+  }>>(initial);
   const [stages, setStages] = useState<State<{
     stages: {
       shopifyReturnOpening: { preflightPassed: boolean; checks: Record<string, boolean>; actualWriteEnabled: boolean };
@@ -250,6 +255,23 @@ export default function ExchangeReview({ caseId }: { caseId: number }) {
           </ul>
         </div>}
       </div>
+      {caseId === 3 && <div className="mt-4 rounded-xl border border-amber-700/60 p-4">
+        <h3 className="font-medium">Autorización previa · Pedido #1007 · Solo Staging</h3>
+        <p className="mt-1 text-sm text-zinc-400">Auditoría de identificación del pedido y líneas de cambio. No habilita escrituras ni ejecuta devoluciones.</p>
+        <button type="button" disabled={authorization.loading}
+          onClick={() => void load("write-authorization-checklist", setAuthorization)}
+          className="mt-3 cursor-pointer rounded-lg border border-amber-600 px-4 py-2 text-sm hover:bg-amber-950 disabled:opacity-50">
+          {authorization.loading ? "Comprobando…" : "Revisar autorización de prueba"}
+        </button>
+        {authorization.error && <p role="alert" className="mt-2 text-sm text-red-400">{authorization.error}</p>}
+        {authorization.value && <div className="mt-3 space-y-1 text-sm">
+          <p>Tienda: {authorization.value.shopDomain}</p>
+          <p>Pedido: {authorization.value.orderNumber}</p>
+          <p>Requisitos de apertura: {authorization.value.openingPreflightPassed ? "Superados" : "Pendientes"}</p>
+          <p>Líneas originales / sustitutas: {authorization.value.candidateInput?.returnLineItems.length ?? 0} / {authorization.value.candidateInput?.exchangeLineItems.length ?? 0}</p>
+          <p className="text-amber-300">Ejecución real desactivada. No se ha modificado Shopify.</p>
+        </div>}
+      </div>}
       {preview.error && <p role="alert" className="mt-3 text-sm text-red-400">{preview.error}</p>}
       {preview.value && (
         <div className="mt-4 space-y-2 rounded-xl bg-zinc-950 p-4 text-sm">
