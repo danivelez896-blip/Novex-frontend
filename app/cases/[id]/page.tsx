@@ -3,6 +3,7 @@ import ShipmentActions from "./ShipmentActions";
 import RefundActions from "./RefundActions";
 import CaseActions from "./CaseActions";
 import ExchangeReview from "./ExchangeReview";
+import ReturnPreflight from "./ReturnPreflight";
 
 type CaseDetail = {
   id: number;
@@ -130,6 +131,7 @@ export default async function CasePage({
 </div>
 
         {caseData.type === "EXCHANGE" && <ExchangeReview caseId={caseData.id} />}
+        {process.env.NOVEX_ENABLE_STAGING_SENDCLOUD_CONNECT === "true" && caseData.type === "EXCHANGE" && <ReturnPreflight caseId={caseData.id} />}
 
         <div className="grid gap-6 lg:grid-cols-2">
           <section className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
