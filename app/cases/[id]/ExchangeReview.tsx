@@ -294,7 +294,7 @@ export default function ExchangeReview({ caseId }: { caseId: number }) {
             className="mt-3 rounded-lg border border-red-600 px-4 py-2 disabled:opacity-50">
             {opening ? "Procesando, no cerrar…" : "Crear devolución REAL del pedido #1007"}
           </button>}
-          {openingResult && <p role="status" className="mt-2">{openingResult}</p>
+          {openingResult && <p role="status" className="mt-2">{openingResult}</p>}
         </div>}
       </div>}
       {preview.error && <p role="alert" className="mt-3 text-sm text-red-400">{preview.error}</p>}
