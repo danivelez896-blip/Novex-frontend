@@ -26,6 +26,23 @@ const initial = { loading: false };
 export default function ExchangeReview({ caseId }: { caseId: number }) {
   const [preview, setPreview] = useState<State<Preview>>(initial);
   const [check, setCheck] = useState<State<Check>>(initial);
+  const [preparing, setPreparing] = useState(false);
+  const [prepared, setPrepared] = useState<{ status: string; executionId: number } | null>(null);
+  const [prepareMessage, setPrepareMessage] = useState("");
+  async function prepare() {
+    if (!window.confirm("¿Preparar el cambio solo dentro de Novex Staging? No crea devoluciones, productos ni envíos en Shopify.")) return;
+    setPreparing(true);
+    setPrepareMessage("");
+    try {
+      const response = await fetch(`/api/exchanges/cases/${caseId}/prepare`, { method: "POST" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(typeof data.message === "string" ? data.message : "No se pudo preparar el cambio");
+      setPrepared(data);
+      setPrepareMessage("Preparación local registrada. No se ha modificado Shopify.");
+    } catch (e) {
+      setPrepareMessage(e instanceof Error ? e.message : "Error de preparación");
+    } finally { setPreparing(false); }
+  }
 
   async function load<T>(path: string, setter: (v: State<T>) => void) {
     setter({ loading: true });
@@ -57,6 +74,18 @@ export default function ExchangeReview({ caseId }: { caseId: number }) {
           {check.loading ? "Consultando…" : "Comprobar devolución en Shopify"}
         </button>
       </div>
+      {check.value?.status === "INSPECTION" && (
+        <div className="mt-4 rounded-xl border border-dashed border-violet-700 p-4">
+          <h3 className="font-medium">Preparación interna del cambio</h3>
+          <p className="mt-1 text-sm text-zinc-400">Registra una operación idempotente en Novex; no modifica Shopify ni crea envíos.</p>
+          <button type="button" onClick={() => void prepare()} disabled={preparing}
+            className="mt-3 cursor-pointer rounded-lg border border-violet-500 px-4 py-2 text-sm transition hover:bg-violet-950 focus-visible:ring-2 focus-visible:ring-violet-400 disabled:cursor-not-allowed disabled:opacity-50">
+            {preparing ? "Preparando…" : "Preparar cambio en Novex"}
+          </button>
+          {prepared && <p className="mt-2 text-sm text-emerald-400">Ejecución #{prepared.executionId}: {prepared.status}</p>}
+          {prepareMessage && <p role="status" className="mt-2 text-sm text-amber-300">{prepareMessage}</p>}
+        </div>
+      )}
       {preview.error && <p role="alert" className="mt-3 text-sm text-red-400">{preview.error}</p>}
       {preview.value && (
         <div className="mt-4 space-y-2 rounded-xl bg-zinc-950 p-4 text-sm">
