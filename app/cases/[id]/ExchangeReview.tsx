@@ -26,6 +26,14 @@ const initial = { loading: false };
 export default function ExchangeReview({ caseId }: { caseId: number }) {
   const [preview, setPreview] = useState<State<Preview>>(initial);
   const [check, setCheck] = useState<State<Check>>(initial);
+  const [dryRun, setDryRun] = useState<State<{
+    dryRun: boolean; mutationExecuted: boolean; executable: boolean;
+    blockers: string[]; candidateInput: {
+      orderId: string;
+      returnLineItems: { quantity: number }[];
+      exchangeLineItems: { quantity: number }[];
+    } | null;
+  }>>(initial);
   const [reconciliation, setReconciliation] = useState<State<{
     linkedReturn: boolean;
     verifiedFromShopify: boolean;
@@ -195,6 +203,24 @@ export default function ExchangeReview({ caseId }: { caseId: number }) {
               <p>Variantes y cantidades coinciden: {reconciliation.value.expectedReplacementMatched ? "Sí" : "No"}</p>}
           </>}
           <p className="text-zinc-400">{reconciliation.value.note}</p>
+        </div>}
+      </div>
+      <div className="mt-4 rounded-xl border border-zinc-700 p-4">
+        <h3 className="font-medium">Ensayo previo de Shopify (sin ejecutar)</h3>
+        <p className="mt-1 text-sm text-zinc-400">Valida las líneas originales y sustitutas para preparar la futura operación real. No crea nada.</p>
+        <button type="button" disabled={dryRun.loading}
+          onClick={() => void load("dry-run", setDryRun)}
+          className="mt-3 cursor-pointer rounded-lg border border-zinc-600 px-4 py-2 text-sm hover:bg-zinc-800 disabled:opacity-50">
+          {dryRun.loading ? "Calculando…" : "Preparar ensayo sin ejecutar"}
+        </button>
+        {dryRun.error && <p role="alert" className="mt-2 text-sm text-red-400">{dryRun.error}</p>}
+        {dryRun.value && <div className="mt-3 text-sm space-y-1">
+          <p>Sin operaciones ejecutadas: {dryRun.value.dryRun && !dryRun.value.mutationExecuted ? "Sí" : "No"}</p>
+          <p>Autorizado para ejecución real: {dryRun.value.executable ? "Sí" : "No"}</p>
+          {dryRun.value.candidateInput && <p>Artículos originales: {dryRun.value.candidateInput.returnLineItems.length} · sustitutos: {dryRun.value.candidateInput.exchangeLineItems.length}</p>}
+          {dryRun.value.blockers.length > 0 && <ul className="list-disc pl-5">
+            {dryRun.value.blockers.map((blocker, i) => <li key={i}>{blocker}</li>)}
+          </ul>}
         </div>}
       </div>
       {preview.error && <p role="alert" className="mt-3 text-sm text-red-400">{preview.error}</p>}
