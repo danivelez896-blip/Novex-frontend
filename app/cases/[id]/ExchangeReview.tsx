@@ -26,6 +26,13 @@ const initial = { loading: false };
 export default function ExchangeReview({ caseId }: { caseId: number }) {
   const [preview, setPreview] = useState<State<Preview>>(initial);
   const [check, setCheck] = useState<State<Check>>(initial);
+  const [stages, setStages] = useState<State<{
+    stages: {
+      shopifyReturnOpening: { preflightPassed: boolean; checks: Record<string, boolean>; actualWriteEnabled: boolean };
+      receiptAndInspection: { physicalReceiptVerified: boolean; inspectionStarted: boolean };
+    };
+    mutationExecuted: boolean;
+  }>>(initial);
   const [dryRun, setDryRun] = useState<State<{
     dryRun: boolean; mutationExecuted: boolean; executable: boolean;
     blockers: string[]; candidateInput: {
@@ -221,6 +228,26 @@ export default function ExchangeReview({ caseId }: { caseId: number }) {
           {dryRun.value.blockers.length > 0 && <ul className="list-disc pl-5">
             {dryRun.value.blockers.map((blocker, i) => <li key={i}>{blocker}</li>)}
           </ul>}
+        </div>}
+      </div>
+      <div className="mt-4 rounded-xl border border-zinc-700 p-4">
+        <h3 className="font-medium">Etapas de la devolución real · Solo lectura</h3>
+        <p className="mt-1 text-sm text-zinc-400">Separa la apertura de la devolución en Shopify de su recepción física e inspección.</p>
+        <button type="button" disabled={stages.loading}
+          onClick={() => void load("stage-checklist", setStages)}
+          className="mt-3 cursor-pointer rounded-lg border border-zinc-600 px-4 py-2 text-sm hover:bg-zinc-800 disabled:opacity-50">
+          {stages.loading ? "Verificando…" : "Verificar etapas del cambio"}
+        </button>
+        {stages.error && <p role="alert" className="mt-2 text-sm text-red-400">{stages.error}</p>}
+        {stages.value && <div className="mt-3 space-y-2 text-sm">
+          <p>Requisitos de apertura Shopify: {stages.value.stages.shopifyReturnOpening.preflightPassed ? "Superados" : "Pendientes"}</p>
+          <p>Recepción física verificada: {stages.value.stages.receiptAndInspection.physicalReceiptVerified ? "Sí" : "No"}</p>
+          <p>Inspección iniciada: {stages.value.stages.receiptAndInspection.inspectionStarted ? "Sí" : "No"}</p>
+          <p className="text-amber-300">Operaciones de escritura: desactivadas. No se ha creado ninguna devolución.</p>
+          <ul className="list-disc pl-5 text-zinc-400">
+            {Object.entries(stages.value.stages.shopifyReturnOpening.checks).filter(([, ok]) => !ok)
+              .map(([name]) => <li key={name}>Pendiente: {name}</li>)}
+          </ul>
         </div>}
       </div>
       {preview.error && <p role="alert" className="mt-3 text-sm text-red-400">{preview.error}</p>}
