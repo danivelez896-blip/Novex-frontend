@@ -258,6 +258,22 @@ export default function ExchangeReview({ caseId }: { caseId: number }) {
           </ul>}
         </div>}
       </div>
+      <div className="mt-4 rounded-xl border border-zinc-700 p-4">
+        <h3 className="font-medium">Auditoría del caso</h3>
+        <button type="button" disabled={audit.loading}
+          onClick={() => void load("audit-timeline", setAudit)}
+          className="mt-3 rounded-lg border border-zinc-600 px-4 py-2 text-sm disabled:opacity-50">
+          Consultar historial
+        </button>
+        {audit.error && <p role="alert">{audit.error}</p>}
+        {audit.value && <div className="mt-3 max-h-72 overflow-auto text-sm">
+          {audit.value.records.map((entry) =>
+            <p key={entry.source + entry.id}>
+              {new Date(entry.at).toLocaleString("es-ES")}: {entry.action}
+            </p>)}
+          {audit.value.records.length === 0 && <p>Sin registros.</p>}
+        </div>}
+      </div>
       <div className="mt-4 rounded-xl border border-emerald-700/50 p-4">
         <h3 className="font-medium">Laboratorio aislado de cambios · Cero costes</h3>
         <p className="mt-1 text-sm text-zinc-400">Ensaya seis situaciones, incluidos stock insuficiente, error económico y recepción duplicada. No altera el caso ni llama a Shopify o Sendcloud.</p>
