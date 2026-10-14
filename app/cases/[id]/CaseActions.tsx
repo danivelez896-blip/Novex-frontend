@@ -6,9 +6,11 @@ import { useState } from "react";
 export default function CaseActions({
   caseId,
   currentStatus,
+  caseType,
 }: {
   caseId: number;
   currentStatus: string;
+  caseType: string;
 }) {
   const router = useRouter();
 
@@ -81,7 +83,7 @@ export default function CaseActions({
               disabled={loading}
               className="rounded-xl bg-emerald-500 px-4 py-2 text-sm font-medium text-black transition hover:bg-emerald-400 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Aprobar devolución
+              {caseType === "EXCHANGE" ? "Aprobar cambio" : "Aprobar devolución"}
             </button>
 
             <button
@@ -90,14 +92,14 @@ export default function CaseActions({
               disabled={loading}
               className="rounded-xl bg-red-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-400 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Rechazar devolución
+              {caseType === "EXCHANGE" ? "Rechazar cambio" : "Rechazar devolución"}
             </button>
           </>
         )}
 
         {currentStatus === "APPROVED" && (
           <span className="rounded-xl bg-zinc-800 px-4 py-2 text-sm text-zinc-400">
-            Pendiente de crear el envío de devolución
+            {caseType === "EXCHANGE" ? "Cambio aprobado · pendiente de devolución del producto original" : "Pendiente de crear el envío de devolución"}
           </span>
         )}
 
