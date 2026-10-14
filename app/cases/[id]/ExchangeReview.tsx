@@ -49,11 +49,11 @@ export default function ExchangeReview({ caseId }: { caseId: number }) {
       </p>
       <div className="mt-4 flex flex-wrap gap-3">
         <button type="button" disabled={preview.loading} onClick={() => void load("preview", setPreview)}
-          className="rounded-lg border border-zinc-600 px-4 py-2 text-sm disabled:opacity-50">
+          className="rounded-lg border border-zinc-600 px-4 py-2 text-sm cursor-pointer transition-colors duration-150 hover:border-zinc-400 hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:cursor-not-allowed disabled:opacity-50">
           {preview.loading ? "Consultando…" : "Consultar diferencia de precio"}
         </button>
         <button type="button" disabled={check.loading} onClick={() => void load("check", setCheck)}
-          className="rounded-lg border border-zinc-600 px-4 py-2 text-sm disabled:opacity-50">
+          className="rounded-lg border border-zinc-600 px-4 py-2 text-sm cursor-pointer transition-colors duration-150 hover:border-zinc-400 hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:cursor-not-allowed disabled:opacity-50">
           {check.loading ? "Consultando…" : "Comprobar devolución en Shopify"}
         </button>
       </div>
