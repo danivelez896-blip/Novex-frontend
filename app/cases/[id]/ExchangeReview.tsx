@@ -29,6 +29,25 @@ export default function ExchangeReview({ caseId }: { caseId: number }) {
   const [preparing, setPreparing] = useState(false);
   const [prepared, setPrepared] = useState<{ status: string; executionId: number } | null>(null);
   const [prepareMessage, setPrepareMessage] = useState("");
+  const [simulatingReplacement, setSimulatingReplacement] = useState(false);
+  const [replacementMessage, setReplacementMessage] = useState("");
+  async function simulateReplacement() {
+    if (!window.confirm("¿Registrar solo la planificación ficticia de la nueva talla? No se creará pedido, reserva de stock ni envío en Shopify.")) return;
+    setSimulatingReplacement(true);
+    setReplacementMessage("");
+    try {
+      const response = await fetch(`/api/exchanges/cases/${caseId}/simulate-replacement`, { method: "POST" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(
+        Array.isArray(data.message) ? data.message.join(", ") :
+        typeof data.message === "string" ? data.message : "No se pudo simular");
+      setReplacementMessage(data.alreadyRegistered
+        ? "Esta planificación ya estaba registrada. No hay duplicados."
+        : "Sustitución planificada ficticiamente. Shopify no se ha modificado.");
+    } catch (error) {
+      setReplacementMessage(error instanceof Error ? error.message : "Error de simulación");
+    } finally { setSimulatingReplacement(false); }
+  }
   async function prepare() {
     if (!window.confirm("¿Preparar el cambio solo dentro de Novex Staging? No crea devoluciones, productos ni envíos en Shopify.")) return;
     setPreparing(true);
@@ -84,6 +103,20 @@ export default function ExchangeReview({ caseId }: { caseId: number }) {
           </button>
           {prepared && <p className="mt-2 text-sm text-emerald-400">Ejecución #{prepared.executionId}: {prepared.status}</p>}
           {prepareMessage && <p role="status" className="mt-2 text-sm text-amber-300">{prepareMessage}</p>}
+        </div>
+      )}
+      {check.value?.status === "INSPECTION" &&
+        (prepared?.status === "PREPARED" || check.value.execution?.status === "PREPARED") && (
+        <div className="mt-4 rounded-xl border border-dashed border-amber-700/70 p-4">
+          <h3 className="font-medium">Simulación de producto de sustitución · Solo Staging</h3>
+          <p className="mt-1 text-sm text-zinc-400">
+            Comprueba de nuevo stock y precio en Shopify (solo lectura) y registra una planificación interna sin alterar la ejecución preparada.
+          </p>
+          <button type="button" disabled={simulatingReplacement} onClick={() => void simulateReplacement()}
+            className="mt-3 cursor-pointer rounded-lg border border-amber-600 px-4 py-2 text-sm transition hover:bg-amber-950 focus-visible:ring-2 focus-visible:ring-amber-400 disabled:cursor-not-allowed disabled:opacity-50">
+            {simulatingReplacement ? "Comprobando…" : "Simular preparación de la talla de sustitución"}
+          </button>
+          {replacementMessage && <p role="status" className="mt-3 text-sm text-amber-300">{replacementMessage}</p>}
         </div>
       )}
       {preview.error && <p role="alert" className="mt-3 text-sm text-red-400">{preview.error}</p>}
