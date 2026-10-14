@@ -20,7 +20,7 @@ export default function ReturnPreflight({ caseId }: { caseId: number }) {
     <h3 className="text-base font-medium">Comprobación logística de devolución</h3>
     <p className="mt-1 text-sm text-zinc-400">Diagnóstico local para 0,4 kg. No genera etiquetas ni contacta con el transportista.</p>
     <button type="button" disabled={loading} onClick={() => void inspect()}
-      className="mt-3 rounded-lg border border-zinc-600 px-4 py-2 text-sm disabled:opacity-50">
+      className="mt-3 rounded-lg border border-zinc-600 px-4 py-2 text-sm cursor-pointer transition-colors duration-150 hover:border-zinc-400 hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:cursor-not-allowed disabled:opacity-50">
       {loading ? "Comprobando…" : "Comprobar datos del envío"}
     </button>
     {error && <p role="alert" className="mt-3 text-sm text-red-400">{error}</p>}
