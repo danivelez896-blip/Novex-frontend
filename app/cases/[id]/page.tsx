@@ -127,6 +127,7 @@ export default async function CasePage({
   <CaseActions
     caseId={caseData.id}
     currentStatus={caseData.status}
+    caseType={caseData.type}
   />
 </div>
 
