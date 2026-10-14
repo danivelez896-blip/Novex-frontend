@@ -26,6 +26,14 @@ const initial = { loading: false };
 export default function ExchangeReview({ caseId }: { caseId: number }) {
   const [preview, setPreview] = useState<State<Preview>>(initial);
   const [check, setCheck] = useState<State<Check>>(initial);
+  const [reconciliation, setReconciliation] = useState<State<{
+    linkedReturn: boolean;
+    verifiedFromShopify: boolean;
+    externalReturnId?: string;
+    shopifyReturnStatus?: string;
+    expectedReplacementMatched?: boolean;
+    note: string;
+  }>>(initial);
   const [readiness, setReadiness] = useState<State<{
     safeToExecute: boolean;
     blockers: string[];
@@ -167,6 +175,26 @@ export default function ExchangeReview({ caseId }: { caseId: number }) {
             {readiness.value.blockers.map((reason, index) => <li key={index}>{reason}</li>)}
           </ul>}
           <p className="mt-2 text-zinc-400">No se han realizado modificaciones en Shopify.</p>
+        </div>}
+      </div>
+      <div className="mt-4 rounded-xl border border-zinc-700 p-4">
+        <h3 className="font-medium">Conciliación de devolución real (solo lectura)</h3>
+        <p className="mt-1 text-sm text-zinc-400">Comprueba la devolución y la talla sustituta asociadas en Shopify; no realiza cambios.</p>
+        <button type="button" disabled={reconciliation.loading}
+          onClick={() => void load("reconciliation", setReconciliation)}
+          className="mt-3 cursor-pointer rounded-lg border border-zinc-600 px-4 py-2 text-sm hover:bg-zinc-800 disabled:opacity-50">
+          {reconciliation.loading ? "Consultando…" : "Verificar sustitución en Shopify"}
+        </button>
+        {reconciliation.error && <p role="alert" className="mt-2 text-sm text-red-400">{reconciliation.error}</p>}
+        {reconciliation.value && <div className="mt-3 space-y-1 text-sm">
+          <p>{reconciliation.value.linkedReturn ? "Devolución vinculada en Novex" : "Todavía no existe una devolución real vinculada"}</p>
+          {reconciliation.value.linkedReturn && <>
+            <p>Confirmada por Shopify: {reconciliation.value.verifiedFromShopify ? "Sí" : "No"}</p>
+            {reconciliation.value.shopifyReturnStatus && <p>Estado Shopify: {reconciliation.value.shopifyReturnStatus}</p>}
+            {reconciliation.value.expectedReplacementMatched !== undefined &&
+              <p>Variantes y cantidades coinciden: {reconciliation.value.expectedReplacementMatched ? "Sí" : "No"}</p>}
+          </>}
+          <p className="text-zinc-400">{reconciliation.value.note}</p>
         </div>}
       </div>
       {preview.error && <p role="alert" className="mt-3 text-sm text-red-400">{preview.error}</p>}
