@@ -115,7 +115,7 @@ export default function ShipmentActions({
             type="button"
             onClick={createShipment}
             disabled={loading}
-            className="mt-5 rounded-xl bg-white px-5 py-3 text-sm font-medium text-black transition hover:bg-zinc-200 disabled:opacity-50"
+            className="mt-5 rounded-xl bg-white px-5 py-3 text-sm font-medium text-black transition hover:bg-zinc-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {loading
               ? "Creando devolución..."
