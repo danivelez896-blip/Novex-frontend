@@ -26,6 +26,11 @@ const initial = { loading: false };
 export default function ExchangeReview({ caseId }: { caseId: number }) {
   const [preview, setPreview] = useState<State<Preview>>(initial);
   const [check, setCheck] = useState<State<Check>>(initial);
+  const [readiness, setReadiness] = useState<State<{
+    safeToExecute: boolean;
+    blockers: string[];
+    shopifyMutationPerformed: boolean;
+  }>>(initial);
   const [preparing, setPreparing] = useState(false);
   const [prepared, setPrepared] = useState<{ status: string; executionId: number } | null>(null);
   const [prepareMessage, setPrepareMessage] = useState("");
@@ -145,6 +150,25 @@ export default function ExchangeReview({ caseId }: { caseId: number }) {
           {finishMessage && <p role="status" className="mt-3 text-sm text-amber-300">{finishMessage}</p>}
         </div>
       )}
+      <div className="mt-4 rounded-xl border border-zinc-700 p-4">
+        <h3 className="font-medium">Diagnóstico previo a un cambio real</h3>
+        <p className="mt-1 text-sm text-zinc-400">Solo lectura. Muestra los bloqueos antes de cualquier operación real.</p>
+        <button type="button" disabled={readiness.loading}
+          onClick={() => void load("readiness", setReadiness)}
+          className="mt-3 cursor-pointer rounded-lg border border-zinc-600 px-4 py-2 text-sm hover:bg-zinc-800 disabled:opacity-50">
+          {readiness.loading ? "Verificando…" : "Analizar seguridad del cambio"}
+        </button>
+        {readiness.error && <p role="alert" className="mt-3 text-sm text-red-400">{readiness.error}</p>}
+        {readiness.value && <div className="mt-3 text-sm">
+          <p className={readiness.value.safeToExecute ? "text-emerald-400" : "text-amber-300"}>
+            {readiness.value.safeToExecute ? "Sin bloqueos detectados (no constituye autorización de ejecución)." : "Ejecución real bloqueada"}
+          </p>
+          {readiness.value.blockers.length > 0 && <ul className="mt-2 list-disc space-y-1 pl-5">
+            {readiness.value.blockers.map((reason, index) => <li key={index}>{reason}</li>)}
+          </ul>}
+          <p className="mt-2 text-zinc-400">No se han realizado modificaciones en Shopify.</p>
+        </div>}
+      </div>
       {preview.error && <p role="alert" className="mt-3 text-sm text-red-400">{preview.error}</p>}
       {preview.value && (
         <div className="mt-4 space-y-2 rounded-xl bg-zinc-950 p-4 text-sm">
