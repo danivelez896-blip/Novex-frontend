@@ -31,6 +31,20 @@ export default function ExchangeReview({ caseId }: { caseId: number }) {
   const [prepareMessage, setPrepareMessage] = useState("");
   const [simulatingReplacement, setSimulatingReplacement] = useState(false);
   const [replacementMessage, setReplacementMessage] = useState("");
+  const [finishing, setFinishing] = useState(false);
+  const [finishMessage, setFinishMessage] = useState("");
+  async function finishSimulation() {
+    if (!window.confirm("Finalizar solo la simulación? El caso real seguirá en INSPECTION.")) return;
+    setFinishing(true); setFinishMessage("");
+    try {
+      const response = await fetch(`/api/exchanges/cases/${caseId}/finish-simulation`, { method: "POST" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(typeof data.message === "string" ? data.message : "No se pudo finalizar");
+      setFinishMessage(data.alreadyRegistered ? "Ya estaba finalizada, sin duplicados." : "Simulación finalizada. El cambio real sigue pendiente.");
+    } catch (error) {
+      setFinishMessage(error instanceof Error ? error.message : "Error");
+    } finally { setFinishing(false); }
+  }
   async function simulateReplacement() {
     if (!window.confirm("¿Registrar solo la planificación ficticia de la nueva talla? No se creará pedido, reserva de stock ni envío en Shopify.")) return;
     setSimulatingReplacement(true);
@@ -117,6 +131,18 @@ export default function ExchangeReview({ caseId }: { caseId: number }) {
             {simulatingReplacement ? "Comprobando…" : "Simular preparación de la talla de sustitución"}
           </button>
           {replacementMessage && <p role="status" className="mt-3 text-sm text-amber-300">{replacementMessage}</p>}
+        </div>
+      )}
+      {check.value?.status === "INSPECTION" &&
+        (prepared?.status === "PREPARED" || check.value.execution?.status === "PREPARED") && (
+        <div className="mt-4 rounded-xl border border-dashed border-amber-800 p-4">
+          <h3 className="font-medium">Cierre del laboratorio · Solo Staging</h3>
+          <p className="mt-1 text-sm text-zinc-400">Finaliza solo la prueba ficticia, no el cambio real.</p>
+          <button type="button" disabled={finishing} onClick={() => void finishSimulation()}
+            className="mt-3 cursor-pointer rounded-lg border border-amber-600 px-4 py-2 text-sm transition hover:bg-amber-950 disabled:cursor-not-allowed disabled:opacity-50">
+            {finishing ? "Finalizando…" : "Finalizar simulación de cambio"}
+          </button>
+          {finishMessage && <p role="status" className="mt-3 text-sm text-amber-300">{finishMessage}</p>}
         </div>
       )}
       {preview.error && <p role="alert" className="mt-3 text-sm text-red-400">{preview.error}</p>}
