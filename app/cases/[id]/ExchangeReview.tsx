@@ -56,6 +56,7 @@ export default function ExchangeReview({ caseId }: { caseId: number }) {
     };
     mutationExecuted: boolean;
   }>>(initial);
+  const [audit, setAudit] = useState<State<{ records: { id: number; source: string; at: string; action: string }[] }>>(initial);
   const [lab, setLab] = useState<State<{
     isolated: boolean; externalCalls: number; databaseWrites: number;
     results: { scenario: string; passed: boolean; blockedReason?: string; state: string }[];
