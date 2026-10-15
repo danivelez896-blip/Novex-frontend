@@ -26,24 +26,6 @@ const initial = { loading: false };
 export default function ExchangeReview({ caseId }: { caseId: number }) {
   const [preview, setPreview] = useState<State<Preview>>(initial);
   const [check, setCheck] = useState<State<Check>>(initial);
-  const [opening, setOpening] = useState(false);
-  const [openingResult, setOpeningResult] = useState("");
-  async function openAuthorizedTestReturn() {
-    if (!window.confirm("Crear una devolución REAL en Shopify para el pedido #1007 (M a L). No crea envíos ni reembolsos. ¿Confirmar?")) return;
-    setOpening(true);
-    setOpeningResult("");
-    try {
-      const response = await fetch(`/api/exchanges/cases/${caseId}/authorized-return-create`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ confirmation: "CONFIRMO-DEVOLUCION-1007" }),
-      });
-      const result = await response.json();
-      if (!response.ok) throw new Error(typeof result.message === "string" ? result.message : "Error de Shopify");
-      setOpeningResult(`Devolución creada en Shopify: ${result.shopifyReturnId}. Pendiente de conciliación.`);
-    } catch (error) {
-      setOpeningResult(error instanceof Error ? error.message : "Error desconocido; NO reintentar sin comprobar Shopify");
-    } finally { setOpening(false); }
-  }
   const [authorization, setAuthorization] = useState<State<{
     openingPreflightPassed: boolean; finalExecutionAuthorized: boolean;
     mutationExecuted: boolean; shopDomain: string; orderNumber: string;
@@ -346,14 +328,8 @@ export default function ExchangeReview({ caseId }: { caseId: number }) {
           <p>Requisitos de apertura: {authorization.value.openingPreflightPassed ? "Superados" : "Pendientes"}</p>
           <p>Líneas originales / sustitutas: {authorization.value.candidateInput?.returnLineItems.length ?? 0} / {authorization.value.candidateInput?.exchangeLineItems.length ?? 0}</p>
           <p className="text-amber-300">La ejecución solo funciona si Railway habilita explícitamente la prueba del Caso #3.</p>
-          {authorization.value.openingPreflightPassed && <button type="button"
-            disabled={opening || Boolean(openingResult)}
-            onClick={() => void openAuthorizedTestReturn()}
-            className="mt-3 rounded-lg border border-red-600 px-4 py-2 disabled:opacity-50">
-            {opening ? "Procesando, no cerrar…" : "Crear devolución REAL del pedido #1007"}
-          </button>}
-          {openingResult && <p role="status" className="mt-2">{openingResult}</p>}
-        </div>}
+          <p className="mt-2 text-amber-300">Prueba real completada. Nuevas creaciones desactivadas durante el desarrollo sin costes.</p>
+                  </div>}
       </div>}
       {preview.error && <p role="alert" className="mt-3 text-sm text-red-400">{preview.error}</p>}
       {preview.value && (
