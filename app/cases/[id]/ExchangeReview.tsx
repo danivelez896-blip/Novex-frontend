@@ -56,6 +56,9 @@ export default function ExchangeReview({ caseId }: { caseId: number }) {
     };
     mutationExecuted: boolean;
   }>>(initial);
+  const [companyAudit, setCompanyAudit] = useState<State<{
+    truncated: boolean; records: { id: number; action: string; resourceType: string; resourceId: string | null; userId: number | null; createdAt: string }[];
+  }>>(initial);
   const [audit, setAudit] = useState<State<{ truncated: boolean; records: { id: number; source: string; at: string; action: string; actorType: string; actorUserId: number | null }[] }>>(initial);
   const [lab, setLab] = useState<State<{
     isolated: boolean; externalCalls: number; databaseWrites: number;
@@ -273,6 +276,23 @@ export default function ExchangeReview({ caseId }: { caseId: number }) {
               {new Date(entry.at).toLocaleString("es-ES")}: {entry.action} · {entry.actorType}{entry.actorUserId ? ` #${entry.actorUserId}` : ""}
             </p>)}
           {audit.value.records.length === 0 && <p>Sin registros.</p>}
+        </div>}
+      </div>
+      <div className="mt-4 rounded-xl border border-zinc-700 p-4">
+        <h3 className="font-medium">Auditoría de empresa · Solo administradores</h3>
+        <p className="mt-1 text-sm text-zinc-400">Últimas operaciones críticas de la empresa; no incluye datos personales ni credenciales.</p>
+        <button type="button" disabled={companyAudit.loading}
+          onClick={() => void load("company-audit", setCompanyAudit)}
+          className="mt-3 rounded-lg border border-zinc-600 px-4 py-2 text-sm disabled:opacity-50">
+          Consultar operaciones de empresa
+        </button>
+        {companyAudit.error && <p role="alert" className="mt-2 text-red-400">{companyAudit.error}</p>}
+        {companyAudit.value?.truncated && <p className="mt-2 text-amber-300">Se muestran solo los últimos 50 registros.</p>}
+        {companyAudit.value && <div className="mt-3 max-h-72 space-y-1 overflow-auto text-sm">
+          {companyAudit.value.records.map((entry) => <p key={entry.id}>
+            {new Date(entry.createdAt).toLocaleString("es-ES")}: {entry.action} ({entry.resourceType} #{entry.resourceId ?? "-"})
+          </p>)}
+          {companyAudit.value.records.length === 0 && <p>Sin operaciones de auditoría registradas.</p>}
         </div>}
       </div>
       <div className="mt-4 rounded-xl border border-emerald-700/50 p-4">
