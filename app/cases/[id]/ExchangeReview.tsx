@@ -56,7 +56,7 @@ export default function ExchangeReview({ caseId }: { caseId: number }) {
     };
     mutationExecuted: boolean;
   }>>(initial);
-  const [audit, setAudit] = useState<State<{ records: { id: number; source: string; at: string; action: string; actorType: string; actorUserId: number | null }[] }>>(initial);
+  const [audit, setAudit] = useState<State<{ truncated: boolean; records: { id: number; source: string; at: string; action: string; actorType: string; actorUserId: number | null }[] }>>(initial);
   const [lab, setLab] = useState<State<{
     isolated: boolean; externalCalls: number; databaseWrites: number;
     results: { scenario: string; passed: boolean; blockedReason?: string; state: string }[];
@@ -266,6 +266,7 @@ export default function ExchangeReview({ caseId }: { caseId: number }) {
           Consultar historial
         </button>
         {audit.error && <p role="alert">{audit.error}</p>}
+        {audit.value?.truncated && <p role="status" className="mt-2 text-amber-300">Historial parcial: hay más registros pendientes de consultar.</p>}
         {audit.value && <div className="mt-3 max-h-72 overflow-auto text-sm">
           {audit.value.records.map((entry) =>
             <p key={entry.source + entry.id}>
