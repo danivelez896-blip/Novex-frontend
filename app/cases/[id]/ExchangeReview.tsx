@@ -323,13 +323,13 @@ export default function ExchangeReview({ caseId }: { caseId: number }) {
         </button>
         {stages.error && <p role="alert" className="mt-2 text-sm text-red-400">{stages.error}</p>}
         {stages.value && <div className="mt-3 space-y-2 text-sm">
-          <p>Requisitos de apertura Shopify: {stages.value.stages.shopifyReturnOpening.preflightPassed ? "Superados" : "Pendientes"}</p>
+          <p>Requisitos para crear otra devolución en Shopify: {stages.value.stages.shopifyReturnOpening.preflightPassed ? "Superados" : "No superados (no implica que falte la devolución existente)"}</p>
           <p>Recepción física verificada: {stages.value.stages.receiptAndInspection.physicalReceiptVerified ? "Sí" : "No"}</p>
           <p>Inspección iniciada: {stages.value.stages.receiptAndInspection.inspectionStarted ? "Sí" : "No"}</p>
-          <p className="text-amber-300">Esta consulta no escribe datos. Las devoluciones reales ya abiertas se mantienen independientes.</p>
+          <p className="text-amber-300">Esta consulta evalúa una apertura nueva, no la devolución ya vinculada. Para comprobar esta última, usa «Verificar sustitución en Shopify». No escribe datos.</p>
           <ul className="list-disc pl-5 text-zinc-400">
             {Object.entries(stages.value.stages.shopifyReturnOpening.checks).filter(([, ok]) => !ok)
-              .map(([name]) => <li key={name}>Pendiente: {name}</li>)}
+              .map(([name]) => <li key={name}>{name === "noExistingShopifyReturn" ? "No se permite crear otra devolución si ya existe una devolución Shopify" : name === "noRealExecution" ? "La ejecución real de una nueva apertura permanece desactivada" : `Requisito para nueva apertura: ${name}`}</li>)}
           </ul>
         </div>}
       </div>
