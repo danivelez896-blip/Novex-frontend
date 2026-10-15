@@ -38,6 +38,19 @@ export default function ExchangeReview({ caseId }: { caseId: number }) {
     };
     mutationExecuted: boolean;
   }>>(initial);
+  const [auditProbeLoading, setAuditProbeLoading] = useState(false);
+  const [auditProbeResult, setAuditProbeResult] = useState("");
+  async function runAuditProbe() {
+    setAuditProbeLoading(true); setAuditProbeResult("");
+    try {
+      const response = await fetch(`/api/exchanges/cases/${caseId}/audit-probe`, { method: "POST" });
+      const result = await response.json();
+      if (!response.ok) throw new Error(typeof result.message === "string" ? result.message : "Prueba no disponible");
+      setAuditProbeResult(result.duplicateIgnored ? "Registro existente; no se ha duplicado." : "Registro ficticio de auditoría creado correctamente.");
+    } catch (error) {
+      setAuditProbeResult(error instanceof Error ? error.message : "Error");
+    } finally { setAuditProbeLoading(false); }
+  }
   const [companyAudit, setCompanyAudit] = useState<State<{
     truncated: boolean; records: { id: number; action: string; resourceType: string; resourceId: string | null; userId: number | null; createdAt: string }[];
   }>>(initial);
@@ -262,6 +275,13 @@ export default function ExchangeReview({ caseId }: { caseId: number }) {
       </div>
       <div className="mt-4 rounded-xl border border-zinc-700 p-4">
         <h3 className="font-medium">Auditoría de empresa · Solo administradores</h3>
+        <p className="mt-2 text-sm text-zinc-400">Prueba segura: registra solo una acción ficticia en la auditoría. No cambia pedidos ni genera costes.</p>
+        <button type="button" onClick={() => void runAuditProbe()} disabled={auditProbeLoading}
+          className="mt-2 rounded-lg border border-zinc-600 px-4 py-2 text-sm disabled:opacity-50">
+          {auditProbeLoading ? "Registrando…" : "Probar registro de auditoría"}
+        </button>
+        {auditProbeResult && <p role="status" className="mt-2 text-sm">{auditProbeResult}</p>}
+
         <p className="mt-1 text-sm text-zinc-400">Últimas operaciones críticas de la empresa; no incluye datos personales ni credenciales.</p>
         <button type="button" disabled={companyAudit.loading}
           onClick={() => void load("company-audit", setCompanyAudit)}
