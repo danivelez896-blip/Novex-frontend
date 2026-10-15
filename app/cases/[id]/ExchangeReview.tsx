@@ -56,7 +56,7 @@ export default function ExchangeReview({ caseId }: { caseId: number }) {
     };
     mutationExecuted: boolean;
   }>>(initial);
-  const [audit, setAudit] = useState<State<{ records: { id: number; source: string; at: string; action: string }[] }>>(initial);
+  const [audit, setAudit] = useState<State<{ records: { id: number; source: string; at: string; action: string; actorType: string; actorUserId: number | null }[] }>>(initial);
   const [lab, setLab] = useState<State<{
     isolated: boolean; externalCalls: number; databaseWrites: number;
     results: { scenario: string; passed: boolean; blockedReason?: string; state: string }[];
@@ -269,7 +269,7 @@ export default function ExchangeReview({ caseId }: { caseId: number }) {
         {audit.value && <div className="mt-3 max-h-72 overflow-auto text-sm">
           {audit.value.records.map((entry) =>
             <p key={entry.source + entry.id}>
-              {new Date(entry.at).toLocaleString("es-ES")}: {entry.action}
+              {new Date(entry.at).toLocaleString("es-ES")}: {entry.action} · {entry.actorType}{entry.actorUserId ? ` #${entry.actorUserId}` : ""}
             </p>)}
           {audit.value.records.length === 0 && <p>Sin registros.</p>}
         </div>}
