@@ -1,3 +1,4 @@
+import { notFound, redirect } from "next/navigation";
 import StagingReturnSimulation from "./StagingReturnSimulation";
 import { novexFetch } from "@/lib/novex-server";
 import ShipmentActions from "./ShipmentActions";
@@ -78,9 +79,9 @@ async function getCase(id: string): Promise<CaseDetail> {
     `/cases/${id}`
   );
 
-  if (!response.ok) {
-    throw new Error("No se pudo cargar la devolución");
-  }
+  if (response.status === 401) redirect("/login");
+  if (response.status === 403 || response.status === 404) notFound();
+  if (!response.ok) throw new Error("No se pudo cargar la devolución");
 
   return response.json();
 }
