@@ -1,8 +1,8 @@
-import ReturnRequestForm from "./ReturnRequestForm";
+"use client";
 
-const NOVEX_API_URL =
-  process.env.NOVEX_API_URL ??
-  "https://novex-production-f614.up.railway.app";
+import { use, useEffect, useState } from "react";
+import { portalFetch } from "@/lib/portal-authorization";
+import ReturnRequestForm from "./ReturnRequestForm";
 
 type PortalResponse = {
   order: {
@@ -44,37 +44,26 @@ type PortalResponse = {
   } | null;
 };
 
-async function getPortal(
-  publicId: string
-): Promise<PortalResponse | null> {
-  const response = await fetch(
-    `${NOVEX_API_URL.replace(/\/$/, "")}/api/public/returns/orders/${encodeURIComponent(publicId)}`,
-    {
-      cache: "no-store",
-    }
-  );
-
-  if (!response.ok) {
-    return null;
-  }
-
-  return response.json();
-}
-
-export default async function ReturnPortalPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ id: string }>;
-  searchParams: Promise<{
-    draft?: string;
-  }>;
-}) {
-  const { id } = await params;
-  const { draft } =
-    await searchParams;
-  const portal =
-    await getPortal(id);
+export default function ReturnPortalPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
+  const [portal, setPortal] = useState<PortalResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [draft, setDraft] = useState<string | undefined>();
+  useEffect(() => {
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      setLoading(true);
+      setDraft(new URLSearchParams(window.location.search).get("draft") ?? undefined);
+    });
+    void portalFetch(`/api/public/returns/orders/${encodeURIComponent(id)}`)
+      .then(async response => response.ok ? response.json() as Promise<PortalResponse> : null)
+      .then(data => { if (!cancelled) setPortal(data); })
+      .catch(() => { if (!cancelled) setPortal(null); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [id]);
+  if (loading) return <main className="min-h-screen bg-zinc-100 p-8 text-zinc-900" aria-busy="true">Cargando tu pedido…</main>;
 
   if (!portal) {
     return (

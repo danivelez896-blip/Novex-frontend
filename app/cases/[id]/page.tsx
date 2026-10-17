@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import Link from "next/link";
 import StagingReturnSimulation from "./StagingReturnSimulation";
 import { novexFetch } from "@/lib/novex-server";
 import ShipmentActions from "./ShipmentActions";
@@ -104,12 +105,12 @@ export default async function CasePage({
     <main className="min-h-screen bg-zinc-950 text-white">
       <div className="mx-auto max-w-6xl px-6 py-8">
         <div className="mb-8">
-          <a
+          <Link
             href="/"
             className="text-sm text-zinc-400 transition hover:text-white"
           >
             ← Volver al dashboard
-          </a>
+          </Link>
         </div>
 
         <div className="mb-8 flex items-start justify-between gap-4">
@@ -282,7 +283,7 @@ export default async function CasePage({
             className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950"
           >
             <img
-              src={`/api/return-photos/view?path=${encodeURIComponent(
+              src={`/api/return-photos/view?caseId=${caseData.id}&path=${encodeURIComponent(
                 attachment.fileUrl
               )}`}
               alt={

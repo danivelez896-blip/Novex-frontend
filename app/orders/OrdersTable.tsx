@@ -27,9 +27,11 @@ type Period = "ALL" | "30" | "90";
 export default function OrdersTable({
   orders,
   activeStoreId,
+  referenceTime,
 }: {
   orders: Order[];
   activeStoreId: number | null;
+  referenceTime: number;
 }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -88,7 +90,7 @@ export default function OrdersTable({
   const filteredOrders = useMemo(() => {
     const normalized =
       query.trim().toLowerCase();
-    const now = Date.now();
+    const now = referenceTime;
 
     return orders.filter((order) => {
       const customerName = order.customer
@@ -125,7 +127,7 @@ export default function OrdersTable({
         matchesPeriod
       );
     });
-  }, [orders, query, period]);
+  }, [orders, query, period, referenceTime]);
 
   return (
     <div className="space-y-4">

@@ -22,7 +22,7 @@ type Order = {
   } | null;
 };
 
-async function getOrders(): Promise<Order[]> {
+async function getOrders(): Promise<{ orders: Order[]; referenceTime: number }> {
   const response = await novexFetch(
     "/orders"
   );
@@ -33,11 +33,11 @@ async function getOrders(): Promise<Order[]> {
     );
   }
 
-  return response.json();
+  return { orders: await response.json(), referenceTime: Date.now() };
 }
 
 export default async function OrdersPage() {
-  const [orders, activeStoreId] =
+  const [{ orders, referenceTime }, activeStoreId] =
     await Promise.all([
       getOrders(),
       getActiveStoreId(),
@@ -62,7 +62,7 @@ export default async function OrdersPage() {
       0
     );
 
-  const now = Date.now();
+  const now = referenceTime;
   const last30Days =
     visibleOrders.filter(
       (order) =>
@@ -131,6 +131,7 @@ export default async function OrdersPage() {
 
       <OrdersTable
         orders={visibleOrders}
+        referenceTime={referenceTime}
         activeStoreId={activeStoreId}
       />
     </div>

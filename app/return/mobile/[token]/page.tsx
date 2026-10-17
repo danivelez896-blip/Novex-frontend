@@ -1,9 +1,12 @@
 "use client";
 
+import { portalFetch } from "@/lib/portal-authorization";
+
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   use,
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -47,8 +50,8 @@ export default function ReturnMobilePage({
   const galleryInputRef =
     useRef<HTMLInputElement>(null);
 
-  async function refreshDraft() {
-    const response = await fetch(
+  const refreshDraft = useCallback(async () => {
+    const response = await portalFetch(
       `/api/public/returns/drafts/${encodeURIComponent(token)}`,
       {
         cache: "no-store",
@@ -89,7 +92,7 @@ export default function ReturnMobilePage({
     }
 
     setDraft(data);
-  }
+  }, [token, router]);
 
   useEffect(() => {
     async function load() {
@@ -107,9 +110,12 @@ export default function ReturnMobilePage({
     }
 
     void load();
-  }, [token]);
+  }, [refreshDraft]);
+
+  const draftIsActive = !!draft && draft.status !== "CONSUMED";
 
   useEffect(() => {
+    if (!draftIsActive) return;
     const interval = window.setInterval(
       () => {
         void refreshDraft().catch(() => {
@@ -122,7 +128,7 @@ export default function ReturnMobilePage({
     return () => {
       window.clearInterval(interval);
     };
-  }, [token]);
+  }, [refreshDraft, draftIsActive]);
 
 
   async function upload(
@@ -161,7 +167,7 @@ export default function ReturnMobilePage({
       );
 
       const response =
-        await fetch(
+        await portalFetch(
           "/api/return-photos",
           {
             method: "POST",
