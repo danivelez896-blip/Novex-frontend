@@ -6,9 +6,11 @@ import { useState } from "react";
 export default function CaseActions({
   caseId,
   currentStatus,
+  caseType,
 }: {
   caseId: number;
   currentStatus: string;
+  caseType: string;
 }) {
   const router = useRouter();
 
@@ -79,25 +81,25 @@ export default function CaseActions({
               type="button"
               onClick={() => updateStatus("APPROVED")}
               disabled={loading}
-              className="rounded-xl bg-emerald-500 px-4 py-2 text-sm font-medium text-black transition hover:bg-emerald-400 disabled:opacity-50"
+              className="rounded-xl bg-emerald-500 px-4 py-2 text-sm font-medium text-black transition hover:bg-emerald-400 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Aprobar devolución
+              {caseType === "EXCHANGE" ? "Aprobar cambio" : "Aprobar devolución"}
             </button>
 
             <button
               type="button"
               onClick={() => updateStatus("REJECTED")}
               disabled={loading}
-              className="rounded-xl bg-red-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-400 disabled:opacity-50"
+              className="rounded-xl bg-red-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-400 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Rechazar devolución
+              {caseType === "EXCHANGE" ? "Rechazar cambio" : "Rechazar devolución"}
             </button>
           </>
         )}
 
         {currentStatus === "APPROVED" && (
           <span className="rounded-xl bg-zinc-800 px-4 py-2 text-sm text-zinc-400">
-            Pendiente de crear el envío de devolución
+            {caseType === "EXCHANGE" ? "Cambio aprobado · pendiente de devolución del producto original" : "Pendiente de crear el envío de devolución"}
           </span>
         )}
 
@@ -112,7 +114,7 @@ export default function CaseActions({
             type="button"
             onClick={() => updateStatus("INSPECTION")}
             disabled={loading}
-            className="rounded-xl bg-purple-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-purple-400 disabled:opacity-50"
+            className="rounded-xl bg-purple-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-purple-400 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Iniciar inspección
           </button>
@@ -129,7 +131,7 @@ export default function CaseActions({
             type="button"
             onClick={() => updateStatus("CLOSED")}
             disabled={loading}
-            className="rounded-xl bg-zinc-200 px-4 py-2 text-sm font-medium text-black transition hover:bg-white disabled:opacity-50"
+            className="rounded-xl bg-zinc-200 px-4 py-2 text-sm font-medium text-black transition hover:bg-white cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Cerrar caso
           </button>

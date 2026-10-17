@@ -1,3 +1,7 @@
+import SendcloudReturnSettings from "./SendcloudReturnSettings";
+import StagingShopifyConnect from "./StagingShopifyConnect";
+import StagingSendcloudConnect from "./StagingSendcloudConnect";
+import SendcloudContracts from "./SendcloudContracts";
 import {
   getActiveStoreId,
   novexFetch,
@@ -449,12 +453,24 @@ export default async function SettingsPage() {
               description="Pedidos, productos, clientes y reembolsos"
               integration={shopify}
             />
+            {process.env.NOVEX_ENABLE_STAGING_SHOPIFY_CONNECT === "true" && store?.id && (
+              <div className="lg:col-span-2"><StagingShopifyConnect storeId={store.id} /></div>
+            )}
 
             <IntegrationCard
               name="Sendcloud"
               description="Envíos de devolución, etiquetas y tracking"
               integration={sendcloud}
             />
+            {process.env.NOVEX_ENABLE_STAGING_SENDCLOUD_CONNECT === "true" && store?.id && sendcloud?.status === "CONNECTED" && (
+              <div className="lg:col-span-2"><SendcloudContracts storeId={store.id} /></div>
+            )}
+            {process.env.NOVEX_ENABLE_STAGING_SENDCLOUD_CONNECT === "true" && store?.id && sendcloud?.status === "CONNECTED" && (
+              <div className="lg:col-span-2"><SendcloudReturnSettings storeId={store.id} /></div>
+            )}
+            {process.env.NOVEX_ENABLE_STAGING_SENDCLOUD_CONNECT === "true" && store?.id && sendcloud?.status !== "CONNECTED" && (
+              <div className="lg:col-span-2"><StagingSendcloudConnect storeId={store.id} /></div>
+            )}
           </div>
         </section>
 

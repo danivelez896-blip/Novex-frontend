@@ -1,3 +1,4 @@
+import { configuredEndpoint } from "@/lib/staging-endpoints";
 import { cookies } from "next/headers";
 
 import {
@@ -9,9 +10,6 @@ import {
   refreshSupabaseSession,
 } from "@/lib/supabase-refresh";
 
-const NOVEX_API_URL =
-  process.env.NOVEX_API_URL ??
-  "https://novex-production-f614.up.railway.app";
 
 async function getRouteAccessToken() {
   const cookieStore =
@@ -114,8 +112,13 @@ export async function novexRouteFetch(
     `Bearer ${token}`
   );
 
+  const apiUrl = configuredEndpoint(process.env.NOVEX_API_URL);
+  if (!apiUrl) {
+    return Response.json({ message: "NOVEX_API_URL no configurada correctamente." }, { status: 503 });
+  }
+
   return fetch(
-    `${NOVEX_API_URL.replace(/\/$/, "")}/api${path}`,
+    `${apiUrl}/api${path}`,
     {
       ...init,
       headers,

@@ -1,6 +1,9 @@
 "use client";
 
+import { portalFetch, portalHandoffUrl } from "@/lib/portal-authorization";
+
 import QRCode from "qrcode";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
   useEffect,
@@ -84,6 +87,10 @@ export default function ReturnRequestForm({
   initialDraftToken?: string;
 }) {
   const router = useRouter();
+  const draftCreation = useRef<Promise<string> | null>(null);
+  const submissionPending = useRef(false);
+
+  const [restored, setRestored] = useState(!initialDraftToken);
 
   const [drafts, setDrafts] =
     useState<Record<number, ItemDraft>>(
@@ -188,7 +195,7 @@ export default function ReturnRequestForm({
     let cancelled = false;
 
     async function restoreDraft() {
-      const response = await fetch(
+      const response = await portalFetch(
         `/api/public/returns/drafts/${encodeURIComponent(token)}`,
         {
           cache: "no-store",
@@ -212,6 +219,12 @@ export default function ReturnRequestForm({
         data.orderPublicId ===
           orderPublicId
       ) {
+        if (data.status === "CONSUMED" && data.casePublicId) {
+          router.replace(`/return/${orderPublicId}/success/${data.casePublicId}`);
+          return;
+        }
+        if (data.status !== "ACTIVE") throw new Error("El borrador ya no está activo.");
+        setRestored(true);
         if (data.payload) {
           setDrafts((current) => ({
             ...current,
@@ -238,7 +251,7 @@ export default function ReturnRequestForm({
       }
     }
 
-    void restoreDraft();
+    void restoreDraft().catch(() => { if (!cancelled) setMessage("No se pudo recuperar el borrador."); });
 
     return () => {
       cancelled = true;
@@ -246,10 +259,11 @@ export default function ReturnRequestForm({
   }, [
     initialDraftToken,
     orderPublicId,
+    router,
   ]);
 
   useEffect(() => {
-    if (!draftToken) {
+    if (!draftToken || !restored) {
       return;
     }
 
@@ -258,7 +272,7 @@ export default function ReturnRequestForm({
 
     const timeout =
       window.setTimeout(() => {
-        void fetch(
+        void portalFetch(
           `/api/public/returns/drafts/${encodeURIComponent(token)}`,
           {
             method: "PATCH",
@@ -270,17 +284,17 @@ export default function ReturnRequestForm({
               payload: drafts,
             }),
           }
-        );
+        ).catch(() => setMessage("No se pudo guardar el borrador. Comprueba tu conexión."));
       }, 500);
 
     return () =>
       window.clearTimeout(
         timeout
       );
-  }, [draftToken, drafts]);
+  }, [draftToken, drafts, restored]);
 
   useEffect(() => {
-    if (!draftToken) {
+    if (!draftToken || !restored) {
       return;
     }
 
@@ -289,7 +303,7 @@ export default function ReturnRequestForm({
     let cancelled = false;
 
     async function refreshDraft() {
-      const response = await fetch(
+      const response = await portalFetch(
         `/api/public/returns/drafts/${encodeURIComponent(token)}`,
         {
           cache: "no-store",
@@ -319,12 +333,12 @@ export default function ReturnRequestForm({
       }
     }
 
-    void refreshDraft();
+    void refreshDraft().catch(() => {});
 
     const interval =
       window.setInterval(
         () =>
-          void refreshDraft(),
+          void refreshDraft().catch(() => {}),
         2500
       );
 
@@ -336,6 +350,7 @@ export default function ReturnRequestForm({
     };
   }, [
     draftToken,
+    restored,
     orderPublicId,
     router,
   ]);
@@ -600,11 +615,19 @@ export default function ReturnRequestForm({
   }
 
   async function ensureDraft() {
+    if (draftToken) return draftToken;
+    if (!draftCreation.current) {
+      draftCreation.current = createDraft().finally(() => { draftCreation.current = null; });
+    }
+    return draftCreation.current;
+  }
+
+  async function createDraft() {
     if (draftToken) {
       return draftToken;
     }
 
-    const response = await fetch(
+    const response = await portalFetch(
       `/api/public/returns/orders/${encodeURIComponent(orderPublicId)}/drafts`,
       {
         method: "POST",
@@ -641,14 +664,7 @@ export default function ReturnRequestForm({
       const token =
         await ensureDraft();
 
-      const mobileOrigin =
-        window.location.hostname ===
-        "localhost"
-          ? `${window.location.protocol}//192.168.1.36${window.location.port ? `:${window.location.port}` : ""}`
-          : window.location.origin;
-
-      const url =
-        `${mobileOrigin}/return/mobile/${encodeURIComponent(token)}`;
+      const url = portalHandoffUrl(`/return/mobile/${encodeURIComponent(token)}`, window.location.origin);
 
       setMobileUrl(url);
 
@@ -699,7 +715,7 @@ export default function ReturnRequestForm({
       )
     );
 
-    const response = await fetch(
+    const response = await portalFetch(
       "/api/return-photos",
       {
         method: "POST",
@@ -732,42 +748,8 @@ export default function ReturnRequestForm({
     return true;
   }
 
-  async function uploadFilesToCase(
-    casePublicId: string
-  ) {
-    if (
-      photos.length === 0
-    ) {
-      return true;
-    }
-
-    const formData =
-      new FormData();
-
-    formData.append(
-      "casePublicId",
-      casePublicId
-    );
-
-    photos.forEach((photo) =>
-      formData.append(
-        "files",
-        photo
-      )
-    );
-
-    const response = await fetch(
-      "/api/return-photos",
-      {
-        method: "POST",
-        body: formData,
-      }
-    );
-
-    return response.ok;
-  }
-
   async function submitReturn() {
+    if (submissionPending.current || !restored) return;
     setMessage("");
 
     if (
@@ -803,16 +785,13 @@ export default function ReturnRequestForm({
       return;
     }
 
+    submissionPending.current = true;
     setSubmitting(true);
 
     try {
-      let token =
-        draftToken;
+      const token = await ensureDraft();
 
-      if (
-        token &&
-        photos.length > 0
-      ) {
+      if (photos.length > 0) {
         const uploaded =
           await uploadFilesToDraft(
             token
@@ -824,7 +803,7 @@ export default function ReturnRequestForm({
       }
 
       const response =
-        await fetch(
+        await portalFetch(
           `/api/public/returns/orders/${encodeURIComponent(orderPublicId)}/cases`,
           {
             method: "POST",
@@ -869,23 +848,6 @@ export default function ReturnRequestForm({
         return;
       }
 
-      if (
-        !token &&
-        photos.length > 0
-      ) {
-        const uploaded =
-          await uploadFilesToCase(
-            data.publicId
-          );
-
-        if (!uploaded) {
-          setMessage(
-            "La devolución se ha creado, pero ha ocurrido un error al guardar las fotos."
-          );
-          return;
-        }
-      }
-
       router.push(
         `/return/${orderPublicId}/success/${data.publicId}`
       );
@@ -894,13 +856,14 @@ export default function ReturnRequestForm({
         "No se pudo crear la devolución."
       );
     } finally {
+      submissionPending.current = false;
       setSubmitting(false);
     }
   }
 
   const canSubmit =
     Boolean(
-      rule?.allowReturns &&
+      restored && rule?.allowReturns &&
       rule.withinReturnPeriod
     );
 
@@ -1248,7 +1211,10 @@ export default function ReturnRequestForm({
 
             {qrDataUrl && (
               <div className="mt-4 flex flex-wrap items-center gap-5">
-                <img
+                <Image
+                  width={220}
+                  height={220}
+                  unoptimized
                   src={qrDataUrl}
                   alt="QR para continuar la devolución en el móvil"
                   className="h-[220px] w-[220px] rounded-lg border border-zinc-200 bg-white p-2"

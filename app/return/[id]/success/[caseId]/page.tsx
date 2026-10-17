@@ -1,8 +1,8 @@
-import Link from "next/link";
+"use client";
 
-const NOVEX_API_URL =
-  process.env.NOVEX_API_URL ??
-  "https://novex-production-f614.up.railway.app";
+import { use, useEffect, useState } from "react";
+import { portalFetch } from "@/lib/portal-authorization";
+import Link from "next/link";
 
 type CaseDetail = {
   publicId: string;
@@ -31,23 +31,6 @@ type CaseDetail = {
     deliveredAt: string | null;
   } | null;
 };
-
-async function getCase(
-  publicId: string
-): Promise<CaseDetail | null> {
-  const response = await fetch(
-    `${NOVEX_API_URL.replace(/\/$/, "")}/api/public/returns/cases/${encodeURIComponent(publicId)}`,
-    {
-      cache: "no-store",
-    }
-  );
-
-  if (!response.ok) {
-    return null;
-  }
-
-  return response.json();
-}
 
 const STATUS_LABELS: Record<
   string,
@@ -260,7 +243,7 @@ function getStatusContent(
   }
 }
 
-export default async function ReturnSuccessPage({
+export default function ReturnSuccessPage({
   params,
 }: {
   params: Promise<{
@@ -269,10 +252,22 @@ export default async function ReturnSuccessPage({
   }>;
 }) {
   const { id, caseId } =
-    await params;
+    use(params);
 
-  const caseData =
-    await getCase(caseId);
+  const [caseData, setCaseData] = useState<CaseDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    let cancelled = false;
+    queueMicrotask(() => { if (!cancelled) setLoading(true); });
+    void portalFetch(`/api/public/returns/cases/${encodeURIComponent(caseId)}`)
+      .then(async response => response.ok ? response.json() as Promise<CaseDetail> : null)
+      .then(data => { if (!cancelled) setCaseData(data?.order.publicId === id ? data : null); })
+      .catch(() => { if (!cancelled) setCaseData(null); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [caseId, id]);
+  if (loading) return <main className="min-h-screen bg-zinc-100 p-8 text-zinc-900" aria-busy="true">Cargando tu devolución…</main>;
+
 
   if (!caseData) {
     return (

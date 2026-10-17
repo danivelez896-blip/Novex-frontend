@@ -1,3 +1,4 @@
+import { configuredEndpoint } from "@/lib/staging-endpoints";
 type RefreshResponse = {
   access_token?: string;
   refresh_token?: string;
@@ -42,14 +43,12 @@ export function isTokenExpiring(
 export async function refreshSupabaseSession(
   refreshToken: string
 ) {
-  const supabaseUrl =
-    process.env.SUPABASE_URL ??
-    "https://xtcrhaqjajritihqofsl.supabase.co";
+  const supabaseUrl = configuredEndpoint(process.env.SUPABASE_URL);
 
   const apiKey =
     process.env.SUPABASE_PUBLISHABLE_KEY;
 
-  if (!apiKey) {
+  if (!apiKey || !supabaseUrl) {
     return null;
   }
 

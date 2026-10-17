@@ -1,39 +1,6 @@
-const NOVEX_API_URL =
-  process.env.NOVEX_API_URL ??
-  "https://novex-production-f614.up.railway.app";
+import { proxyPortalRequest } from "../../../../../../../lib/portal-route.ts";
 
-export async function POST(
-  request: Request,
-  {
-    params,
-  }: {
-    params: Promise<{
-      publicId: string;
-    }>;
-  }
-) {
-  const { publicId } =
-    await params;
-  const body =
-    await request.json();
-
-  const response = await fetch(
-    `${NOVEX_API_URL.replace(/\/$/, "")}/api/public/returns/orders/${encodeURIComponent(publicId)}/cases`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type":
-          "application/json",
-      },
-      body: JSON.stringify(body),
-      cache: "no-store",
-    }
-  );
-
-  const data =
-    await response.json();
-
-  return Response.json(data, {
-    status: response.status,
-  });
+export async function POST(request: Request, { params }: { params: Promise<{ publicId: string }> }) {
+  const { publicId } = await params;
+  return proxyPortalRequest(request, `orders/${encodeURIComponent(publicId)}/cases`);
 }

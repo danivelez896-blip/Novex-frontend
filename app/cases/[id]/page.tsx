@@ -1,10 +1,16 @@
+import { notFound, redirect } from "next/navigation";
+import Link from "next/link";
+import StagingReturnSimulation from "./StagingReturnSimulation";
 import { novexFetch } from "@/lib/novex-server";
 import ShipmentActions from "./ShipmentActions";
 import RefundActions from "./RefundActions";
 import CaseActions from "./CaseActions";
+import ExchangeReview from "./ExchangeReview";
+import ReturnPreflight from "./ReturnPreflight";
 
 type CaseDetail = {
   id: number;
+  type: string;
   status: string;
   requestedAt: string;
   closedAt?: string | null;
@@ -74,9 +80,9 @@ async function getCase(id: string): Promise<CaseDetail> {
     `/cases/${id}`
   );
 
-  if (!response.ok) {
-    throw new Error("No se pudo cargar la devolución");
-  }
+  if (response.status === 401) redirect("/login");
+  if (response.status === 403 || response.status === 404) notFound();
+  if (!response.ok) throw new Error("No se pudo cargar la devolución");
 
   return response.json();
 }
@@ -99,12 +105,12 @@ export default async function CasePage({
     <main className="min-h-screen bg-zinc-950 text-white">
       <div className="mx-auto max-w-6xl px-6 py-8">
         <div className="mb-8">
-          <a
+          <Link
             href="/"
             className="text-sm text-zinc-400 transition hover:text-white"
           >
             ← Volver al dashboard
-          </a>
+          </Link>
         </div>
 
         <div className="mb-8 flex items-start justify-between gap-4">
@@ -124,8 +130,13 @@ export default async function CasePage({
   <CaseActions
     caseId={caseData.id}
     currentStatus={caseData.status}
+    caseType={caseData.type}
   />
 </div>
+
+        {caseData.type === "EXCHANGE" && <ExchangeReview caseId={caseData.id} />}
+        {process.env.NOVEX_ENABLE_STAGING_SENDCLOUD_CONNECT === "true" && caseData.type === "EXCHANGE" && <ReturnPreflight caseId={caseData.id} />}
+        {process.env.NOVEX_ENABLE_STAGING_SENDCLOUD_CONNECT === "true" && caseData.type === "EXCHANGE" && <StagingReturnSimulation caseId={caseData.id} status={caseData.status} isSimulation={caseData.shipments.some((shipment) => shipment.carrier === "NOVEX_STAGING_SIMULATION")} />}
 
         <div className="grid gap-6 lg:grid-cols-2">
           <section className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
@@ -272,7 +283,7 @@ export default async function CasePage({
             className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950"
           >
             <img
-              src={`/api/return-photos/view?path=${encodeURIComponent(
+              src={`/api/return-photos/view?caseId=${caseData.id}&path=${encodeURIComponent(
                 attachment.fileUrl
               )}`}
               alt={
@@ -293,6 +304,7 @@ export default async function CasePage({
     </div>
   </section>
 )}
+{caseData.type !== "EXCHANGE" && (
 <RefundActions
   caseId={caseData.id}
   caseStatus={caseData.status}
@@ -300,6 +312,7 @@ export default async function CasePage({
   currency={caseData.order?.currency ?? "EUR"}
   refunds={caseData.refunds}
 />
+)}
 <ShipmentActions
   caseId={caseData.id}
   caseStatus={caseData.status}
